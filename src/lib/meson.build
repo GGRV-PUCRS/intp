@@ -24,8 +24,9 @@ endif
 # registry walks at runtime (ADR-0001).
 intp_internal = static_library(
         'intp-internal',
-        libintp_sources + core_sources + backend_sources + output_sources,
-        include_directories: intp_include,
+        libintp_sources + core_sources + backend_sources + output_sources
+                + ebpf_sources + ebpf_gen_sources,
+        include_directories: [intp_include] + (ebpf_enabled ? [ebpf_inc] : []),
         c_args: ['-fvisibility=hidden'],
         pic: true,
         dependencies: libintp_deps,
