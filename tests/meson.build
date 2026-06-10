@@ -18,3 +18,26 @@ test_common_inc = include_directories('common')
 subdir('unit')
 subdir('plugin-abi')
 subdir('integration')
+
+# live suite: the eBPF regression gates ported from intp-comparison
+# v3.3 (tests/regression/*.sh). They need root, a BTF kernel, and
+# stress-ng, so the root meson.build registers a default test setup
+# that excludes them — `meson test` stays green on laptops and CI.
+# Run them explicitly with
+#     meson test -C build --setup= --suite live
+# (the empty --setup= bypasses the excluding default setup), or via
+# the remote RDT gate. INTP_AMPL_SECONDS shortens the amplification
+# window for local runs (default 90 s).
+test('live/ebpf-load-attach',
+     find_program('regression/test-load-attach.sh'),
+     args: [meson.project_build_root() / 'src/cli/intp'],
+     suite: 'live',
+     timeout: 300,
+)
+
+test('live/ebpf-no-ctxsw-amplification',
+     find_program('regression/test-no-ctxsw-amplification.sh'),
+     args: [meson.project_build_root() / 'src/cli/intp'],
+     suite: 'live',
+     timeout: 300,
+)

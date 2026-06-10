@@ -5,7 +5,7 @@
 **Interference profiling. Precise observability. For Linux.**
 
 <p align="center">
-  <img alt="status" src="https://img.shields.io/badge/status-public%20placeholder-yellow?style=flat-square">
+  <img alt="status" src="https://img.shields.io/badge/status-release%20candidate-brightgreen?style=flat-square">
   <img alt="destination" src="https://img.shields.io/badge/destination-PPA%20%E2%86%92%20official%20package-success?style=flat-square">
   <img alt="kernel" src="https://img.shields.io/badge/Linux-kernel%206.8%2B-informational?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
@@ -13,16 +13,16 @@
 
 ---
 
-> **This repository is a name reservation.** A public marker for the place
-> where the **`intp`** utility will land once it is ready to be packaged and
-> — **if all goes well** — submitted as an official Linux package
-> (PPA on Launchpad → Debian → Ubuntu → other distributions).
->
-> The code that will live here is not born in this directory. It is
-> designed, compared, and hardened in
-> **[intp-comparison](https://github.com/ggrv-intp/intp-comparison)**,
-> where **seven parallel variants** compete, side by side, to become the
-> implementation that earns the `intp` name on `apt install`.
+> **This repository now carries the working profiler.** The engine was
+> designed, compared, and hardened across measured variants in
+> **[intp-comparison](https://github.com/ggrv-intp/intp-comparison)**
+> (SBAC-PAD 2026), then ported here under a port-and-freeze contract —
+> see [SYNC.md](SYNC.md) for the provenance map. The pure-C stable-ABI
+> engine (heir of variant v2.1) is the baseline; the eBPF/CO-RE engine
+> (heir of v3.3) registers as higher-priority backends on capable
+> kernels and falls through cleanly elsewhere (ADR-0003). Final
+> release stamping awaits the RDT-testbed validation gate
+> (`tests/regression/run-remote-gate.sh`).
 
 ## The vision in one sentence
 
@@ -111,11 +111,12 @@ The journey from "GitHub placeholder" to `sudo apt install intp` has
 well-defined stops. The full breakdown lives in
 [docs/ROADMAP.md](docs/ROADMAP.md); at a glance:
 
-1. **Public name reservation** — *you are here.*
-2. **Variant selection** — `intp-comparison` converges on a single
-   kernel-module-free implementation.
-3. **Debian packaging** — `debian/` directory, `dh_make`, manpages,
-   optional systemd unit, reproducible install tests.
+1. **Public name reservation** — done.
+2. **Variant selection** — done: the SBAC-PAD 2026 comparison selected
+   the v2.1 stable-ABI + v3.3 eBPF pairing now living in this tree.
+3. **Debian packaging** — *you are here*: `debian/` directory,
+   manpage, reproducible install tests; release candidate pending the
+   RDT-testbed gate.
 4. **Personal PPA on Launchpad** — first public channel for Ubuntu LTS
    (22.04, 24.04, 26.04).
 5. **Debian sponsorship** — *Intent To Package* (ITP),
@@ -131,7 +132,7 @@ process that involves more than code.
 
 ## How to follow along
 
-Until the package is born, the place to watch the work happening is
+The research record, benchmark campaigns, and historical variants live in
 [`intp-comparison`](https://github.com/ggrv-intp/intp-comparison) —
 home of the variants, the benchmarks, and the technical documents
 ([METRICS-DEEP-DIVE](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/METRICS-DEEP-DIVE.md),
@@ -166,5 +167,5 @@ Original work:
 ---
 
 <p align="center">
-  <em>The name is reserved. The code is on its way.</em>
+  <em>The code is here. The package is on its way.</em>
 </p>

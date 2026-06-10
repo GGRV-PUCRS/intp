@@ -22,7 +22,7 @@ README applies to every single stage.
 
 ## Stage 0 — Public name reservation
 
-> **Status: current stage.**
+> **Status: complete.**
 
 **Gate:** the GitHub repository
 [`ggrv-intp/intp`](https://github.com/ggrv-intp/intp) exists, is
@@ -39,6 +39,13 @@ checked before Stage 3 begins.
 ---
 
 ## Stage 1 — Variant selection
+
+> **Status: complete.** The SBAC-PAD 2026 comparison campaign measured
+> the variants head-to-head; the selected pairing is v2.1 (pure C on
+> stable kernel ABIs) as the baseline backend set with v3.3 (eBPF/
+> CO-RE, in-kernel aggregation, per-cgroup attribution) as the
+> higher-priority acceleration backends — the hybrid ADR-0003
+> anticipated. See SYNC.md for the freeze commit and provenance.
 
 **Gate:** the seven variants in `intp-comparison` have been
 benchmarked head-to-head on the dissertation's reference hardware,
@@ -66,6 +73,12 @@ document tracks the live state of this analysis.
 
 ## Stage 2 — Code migration and stabilization
 
+> **Status: complete** (this tree). Versioned CLI, intp(1) manpage,
+> machine-readable formats (JSONL / tsv-legacy-v1 / Prometheus),
+> unit + integration + golden-format + live suites, CHANGELOG and
+> semver discipline. Release stamping is gated on the RDT-testbed
+> validation run (`tests/regression/run-remote-gate.sh`).
+
 **Gate:** Stage 1 complete, with a written justification for the
 choice.
 
@@ -88,6 +101,10 @@ matching the dissertation's evaluated configuration.
 ---
 
 ## Stage 3 — Debian packaging
+
+> **Status: in progress** — packaging templates are complete; the
+> lintian-clean local build and the v0.9.0 candidate stamp close this
+> stage once the remote gate passes.
 
 **Gate:** Stage 2 produced a tagged release (`v1.0.0` or later) that
 builds reproducibly from a clean checkout on a vanilla Debian sid

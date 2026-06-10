@@ -153,6 +153,18 @@ endif
 
 if opt_tests
         subdir('tests')
+
+        # Default test setup: skip the 'live' suite (root + real
+        # kernel + stress-ng; see tests/meson.build). Plain
+        # `meson test -C build` therefore runs unit/plugin-abi/
+        # integration only; opt in to the live gates with
+        #     meson test -C build --setup= --suite live
+        # (an explicit empty --setup= bypasses this default setup).
+        add_test_setup(
+                'default',
+                is_default: true,
+                exclude_suites: ['live'],
+        )
 endif
 
 # ---------------------------------------------------------------------------
