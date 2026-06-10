@@ -145,6 +145,7 @@ subdir('src/output')
 subdir('src/lib')
 subdir('src/cli')
 subdir('src/plugins/bpftrace')
+subdir('docs/man')
 
 if opt_examples
         subdir('examples')

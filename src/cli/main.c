@@ -24,6 +24,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../core/core.h"
+#include "../core/detect.h"
 #include "../output/output.h"
 
 static const char usage_text[] =
@@ -46,7 +48,7 @@ static const char usage_text[] =
 	"\n"
 	"Output:\n"
 	"  -f, --format FORMAT        jsonl (default), tsv-legacy-v1, "
-	"prometheus, otlp\n"
+	"prometheus\n"
 	"      --print-schema         dump active schema as JSON Schema and "
 	"exit\n"
 	"      --serve[=URI]          long-running exposition mode (Prometheus "
@@ -59,13 +61,29 @@ static const char usage_text[] =
 	"Diagnostics:\n"
 	"      --probe                check whether eBPF backends will work "
 	"here\n"
+	"      --list-backends        print capabilities and per-metric "
+	"backend\n"
+	"                             candidates, then exit\n"
+	"\n"
+	"Backend control:\n"
+	"      --disable-backend NAME force a core backend off (NAME or "
+	"metric:NAME)\n"
+	"      --force-backend M:ID   force a backend, e.g. mbw:resctrl_mbm\n"
+	"      --disable-metric M     skip metric M entirely\n"
+	"\n"
+	"Hardware overrides (0/absent = autodetect):\n"
+	"      --nic-speed-bps N      link capacity for netp normalization\n"
+	"      --mem-bw-max-bps N     max DRAM bandwidth for mbw\n"
+	"      --llc-size-bytes N     LLC capacity for llcocc\n"
+	"      --disk-bw-max-bps N    device bandwidth ceiling (cgroup blk)\n"
+	"      --iface NAME           network interface\n"
+	"      --disk NAME            block device\n"
 	"\n"
 	"Plugins:\n"
 	"      --plugin-dir DIR       additional plugin search directory\n"
 	"      --enable-plugin NAME   force a plugin to load "
 	"(comma-separated)\n"
 	"      --disable-plugin NAME  force a plugin off (comma-separated)\n"
-	"      --disable-backend NAME force a core backend off\n"
 	"\n"
 	"Misc:\n"
 	"  -v, --verbose              increase logging level\n"
@@ -145,6 +163,15 @@ enum {
 	OPT_DISABLE_BACKEND,
 	OPT_SERVE,
 	OPT_PROBE,
+	OPT_LIST_BACKENDS,
+	OPT_FORCE_BACKEND,
+	OPT_DISABLE_METRIC,
+	OPT_NIC_SPEED,
+	OPT_MEM_BW,
+	OPT_LLC_SIZE,
+	OPT_DISK_BW,
+	OPT_IFACE,
+	OPT_DISK,
 };
 
 static const struct option long_opts[] = {
@@ -163,8 +190,75 @@ static const struct option long_opts[] = {
 	{"disable-backend", required_argument, NULL, OPT_DISABLE_BACKEND},
 	{"serve", optional_argument, NULL, OPT_SERVE},
 	{"probe", no_argument, NULL, OPT_PROBE},
+	{"list-backends", no_argument, NULL, OPT_LIST_BACKENDS},
+	{"force-backend", required_argument, NULL, OPT_FORCE_BACKEND},
+	{"disable-metric", required_argument, NULL, OPT_DISABLE_METRIC},
+	{"nic-speed-bps", required_argument, NULL, OPT_NIC_SPEED},
+	{"mem-bw-max-bps", required_argument, NULL, OPT_MEM_BW},
+	{"llc-size-bytes", required_argument, NULL, OPT_LLC_SIZE},
+	{"disk-bw-max-bps", required_argument, NULL, OPT_DISK_BW},
+	{"iface", required_argument, NULL, OPT_IFACE},
+	{"disk", required_argument, NULL, OPT_DISK},
 	{NULL, 0, NULL, 0},
 };
+
+/* Parse "metric:backend_id" for --force-backend (ported parse_force
+ * from intp-comparison intp-hybrid.c @ 2e87b30fc762). */
+static int parse_force(const char *spec, struct intp_core_force *out)
+{
+	const char *colon = strchr(spec, ':');
+
+	if (!colon || colon == spec || !colon[1])
+		return -1;
+	static char metric_bufs[16][16];
+	static int n_used;
+
+	if (n_used >= 16)
+		return -1;
+
+	char *mbuf = metric_bufs[n_used];
+	size_t mlen = (size_t)(colon - spec);
+
+	if (mlen >= 16)
+		return -1;
+	memcpy(mbuf, spec, mlen);
+	mbuf[mlen] = '\0';
+	n_used++;
+	out->metric = mbuf;
+	out->backend_id = colon + 1;
+	return 0;
+}
+
+/* Port of the v2.1 --list-backends report: capability dump, selected
+ * backend per metric, then the full ordered candidate list. */
+static int run_list_backends(struct intp_ctx *ctx)
+{
+	print_capabilities(detect_cached(), stdout);
+	printf("\n# selected backends:\n");
+	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
+		const struct intp_core_selection *sel = &ctx->sel[m];
+		const char *bid = sel->active ? sel->active->id : "none";
+		const char *desc = sel->active
+					   ? sel->active->description
+					   : "no backend probed successfully";
+
+		printf("  %-7s %-22s %s\n", sel->metric, bid, desc);
+	}
+	printf("\n# backend candidates (ordered by priority):\n");
+	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
+		const struct intp_core_selection *sel = &ctx->sel[m];
+
+		printf("%s:\n", sel->metric);
+		for (int j = 0; j < sel->n_candidates; j++) {
+			const struct intp_core_backend *b = sel->candidates[j];
+			const char *mark = (sel->active == b) ? "*" : " ";
+
+			printf("  %s %-22s %s\n", mark, b->id,
+			       b->description ? b->description : "");
+		}
+	}
+	return 0;
+}
 
 /* Run intp_probe_ebpf() and write a one-line human-readable status.
  * Exit code semantics let scripts branch on the failure mode:
@@ -261,15 +355,23 @@ static int run_serve(const char *arg)
 
 #define MAX_DISABLED 32
 
-static int run_sampling(const struct intp_options *opts, const char *format,
-			long duration_ms, bool print_schema_only)
+static int run_sampling(const struct intp_options *opts,
+			const struct intp_core_extras *extras,
+			const char *format, long duration_ms,
+			bool print_schema_only, bool list_backends)
 {
 	struct intp_ctx *ctx = NULL;
-	int rc = intp_open(opts, &ctx);
+	int rc = intp_core_open_ex(opts, extras, &ctx);
 
 	if (rc) {
 		fprintf(stderr, "intp: open failed: %s\n", intp_strerror(rc));
 		return 1;
+	}
+
+	if (list_backends) {
+		rc = run_list_backends(ctx);
+		intp_close(ctx);
+		return rc ? 1 : 0;
 	}
 
 	if (print_schema_only) {
@@ -350,8 +452,13 @@ int main(int argc, char *argv[])
 	const char *format = "jsonl";
 	long duration_ms = 0; /* 0 = run forever */
 	bool do_print_schema = false;
+	bool do_list_backends = false;
 	const char *disabled_backends[MAX_DISABLED + 1] = {NULL};
 	size_t n_disabled = 0;
+	const char *disabled_metrics[MAX_DISABLED + 1] = {NULL};
+	size_t n_disabled_metrics = 0;
+	struct intp_core_force forces[16];
+	struct intp_core_extras extras = {0};
 	int opt;
 
 	while ((opt = getopt_long(argc, argv, "p:c:i:d:f:vVh", long_opts,
@@ -412,6 +519,43 @@ int main(int argc, char *argv[])
 			if (n_disabled < MAX_DISABLED)
 				disabled_backends[n_disabled++] = optarg;
 			break;
+		case OPT_LIST_BACKENDS:
+			do_list_backends = true;
+			break;
+		case OPT_FORCE_BACKEND:
+			if (extras.n_forces >=
+				    sizeof(forces) / sizeof(forces[0]) ||
+			    parse_force(optarg, &forces[extras.n_forces]) !=
+				    0) {
+				fprintf(stderr,
+					"intp: bad --force-backend spec: %s\n",
+					optarg);
+				return 2;
+			}
+			extras.n_forces++;
+			break;
+		case OPT_DISABLE_METRIC:
+			if (n_disabled_metrics < MAX_DISABLED)
+				disabled_metrics[n_disabled_metrics++] = optarg;
+			break;
+		case OPT_NIC_SPEED:
+			extras.nic_speed_bps_override = atol(optarg);
+			break;
+		case OPT_MEM_BW:
+			extras.mem_bw_max_bps_override = atol(optarg);
+			break;
+		case OPT_LLC_SIZE:
+			extras.llc_size_bytes_override = atol(optarg);
+			break;
+		case OPT_DISK_BW:
+			extras.disk_bw_max_bps_override = atol(optarg);
+			break;
+		case OPT_IFACE:
+			extras.iface = optarg;
+			break;
+		case OPT_DISK:
+			extras.disk = optarg;
+			break;
 		case OPT_PLUGIN_DIR:
 		case OPT_ENABLE_PLUGIN:
 		case OPT_DISABLE_PLUGIN:
@@ -427,6 +571,10 @@ int main(int argc, char *argv[])
 
 	if (n_disabled > 0)
 		opts.disabled_backends = disabled_backends;
+	if (n_disabled_metrics > 0)
+		extras.disabled_metrics = disabled_metrics;
+	extras.forces = forces;
 
-	return run_sampling(&opts, format, duration_ms, do_print_schema);
+	return run_sampling(&opts, &extras, format, duration_ms,
+			    do_print_schema, do_list_backends);
 }

@@ -1,0 +1,171 @@
+.\" SPDX-License-Identifier: MIT
+.TH INTP 1 "June 2026" "intp" "User Commands"
+.SH NAME
+intp \- Linux interference profiler
+.SH SYNOPSIS
+.B intp
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B intp
+measures cross-workload interference on a Linux host. It samples seven
+core metrics at a fixed cadence and emits structured records on
+standard output:
+.TP
+.B netp
+NIC-level network utilization \(em share of the physical link
+bandwidth.
+.TP
+.B nets
+Network stack utilization \(em CPU time spent in NET_TX/NET_RX
+softirq handling.
+.TP
+.B blk
+Block I/O utilization. The semantic model depends on the active
+backend (see
+.BR "SEMANTIC MODELS" ).
+.TP
+.B mbw
+Memory bandwidth utilization \(em share of the sustained DRAM
+bandwidth.
+.TP
+.B llcmr
+Last-level cache miss ratio \(em misses per reference.
+.TP
+.B llcocc
+Last-level cache occupancy \(em share of LLC capacity (Intel
+RDT/CMT, AMD QoS, or ARM MPAM via resctrl).
+.TP
+.B cpu
+CPU utilization \(em busy share of total CPU time.
+.PP
+Each metric is collected through the highest-priority
+.I backend
+whose capability probe passes on the running host (kernel interfaces,
+hardware features, process privileges). A metric whose backends all
+fail to probe is reported as
+.I unavailable
+\(em never as a silent zero. Run
+.B intp \-\-print\-schema
+to see the active selection and the reason every other candidate was
+rejected.
+.SH OPTIONS
+.SS Targeting
+.TP
+.BR \-p ", " \-\-pid " \fIPID\fR"
+Profile a specific process.
+.TP
+.BR \-c ", " \-\-cgroup " \fIPATH\fR"
+Profile a cgroup-v2 path.
+.PP
+With neither option, the whole system is profiled.
+.SS Sampling
+.TP
+.BR \-i ", " \-\-interval " \fIDURATION\fR"
+Sampling interval (default 1s; accepts \fB2\fR, \fB2s\fR,
+\fB100ms\fR).
+.TP
+.BR \-d ", " \-\-duration " \fIDURATION\fR"
+Stop after this long (default: run until SIGINT).
+.SS Output
+.TP
+.BR \-f ", " \-\-format " \fIFORMAT\fR"
+.B jsonl
+(default): one self-describing JSON object per sample; an unavailable
+metric is omitted from the
+.B metrics
+object.
+.B tsv\-legacy\-v1\fR:
+the seven-column tab-separated format consumed by IADA and the
+intp-comparison tooling \(em integer percent values, \fB\-\-\fR for
+unavailable, no header.
+.B prometheus\fR:
+Prometheus text exposition written per tick.
+.TP
+.B \-\-print\-schema
+Dump the active schema as JSON Schema (metric catalogue, selected
+backend, semantic model, and rejection reasons per candidate), then
+exit.
+.TP
+.B \-\-serve\fR[=\fIURI\fR]
+Long-running Prometheus exposition endpoint (default
+\fBprometheus://:9100\fR). Requires a build with libmicrohttpd.
+.SS Diagnostics
+.TP
+.B \-\-probe
+Check whether the eBPF backends can work here; the exit code
+distinguishes kernel-too-old (2), not-permitted (3), built-without-
+eBPF (4).
+.TP
+.B \-\-list\-backends
+Print detected hardware capabilities, the selected backend per
+metric, and the full ordered candidate lists, then exit.
+.SS Backend control
+.TP
+.B \-\-disable\-backend \fINAME\fR
+Skip a backend during selection. \fINAME\fR is a backend id
+(\fBresctrl\fR) or \fImetric\fR\fB:\fR\fIid\fR (\fBmbw:resctrl_mbm\fR).
+.TP
+.B \-\-force\-backend \fIM\fR\fB:\fR\fIID\fR
+Force a specific backend for metric \fIM\fR. Falls back to normal
+selection if the forced backend's probe rejects.
+.TP
+.B \-\-disable\-metric \fIM\fR
+Do not collect metric \fIM\fR at all.
+.SS Hardware overrides
+Normalization constants are autodetected; override when detection is
+wrong or for cross-host comparability:
+.B \-\-nic\-speed\-bps\fR,
+.B \-\-mem\-bw\-max\-bps\fR,
+.B \-\-llc\-size\-bytes\fR,
+.B \-\-disk\-bw\-max\-bps\fR,
+.B \-\-iface\fR,
+.B \-\-disk\fR.
+.SH SEMANTIC MODELS
+Two backends of the same metric may measure different latent
+quantities. The selected backend's model is declared in
+.B \-\-print\-schema\fR.
+Notably for
+.BR blk :
+the eBPF backend integrates per-request service time
+(\fBsvctm_busy_fraction\fR, queue-depth aware); the procfs fallback
+reads io_ticks (\fBio_ticks_util\fR, saturates on parallel NVMe);
+the cgroup backend normalizes io.stat throughput
+(\fBcgroup_io_throughput\fR). Compare values across hosts only within
+the same model.
+.SH PRIVILEGES
+netp, nets, blk and cpu collect unprivileged. llcmr needs
+perf_event access (root, CAP_PERFMON, or perf_event_paranoid \(<= 2
+depending on scope). mbw and llcocc need resctrl (root) or uncore PMU
+access. Missing privilege degrades the affected metric to
+.I unavailable
+with the reason recorded in the schema.
+.SH EXIT STATUS
+0 on success; 1 on runtime failure; 2 on usage errors. \fB\-\-probe\fR
+uses 0/2/3/4/5 as described above.
+.SH EXAMPLES
+Profile the whole host once a second, JSONL on stdout:
+.PP
+.nf
+    intp
+.fi
+.PP
+Ten seconds of legacy TSV for an IADA-style consumer:
+.PP
+.nf
+    intp \-f tsv\-legacy\-v1 \-i 1s \-d 10s
+.fi
+.PP
+Profile one process, forcing the resctrl memory-bandwidth backend:
+.PP
+.nf
+    sudo intp \-p 4242 \-\-force\-backend mbw:resctrl_mbm
+.fi
+.SH SEE ALSO
+.BR perf (1),
+.BR pidstat (1),
+.BR iostat (1)
+.PP
+Full documentation: https://github.com/ggrv\-intp/intp
+.SH AUTHORS
+Based on IntP (Xavier & De Rose, SBAC-PAD 2022) and its
+modernization in the intp-comparison research repository (PUCRS).
