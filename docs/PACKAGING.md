@@ -83,7 +83,8 @@ packaging/debian/
 ├── libintp-dev.install
 ├── intp-doc.install
 ├── intp.manpages
-├── intp-collector.service # optional systemd unit
+├── intp-collector.service # NOT installed in 0.9.x — example only
+│                          # (packaging/systemd/; ship + harden at 1.0)
 ├── intp.lintian-overrides # only with explicit justification
 └── tests/                 # autopkgtest entries
 ```
@@ -129,13 +130,30 @@ maintainer is confident it is wrong, with a comment explaining why.
 
 ### Personal PPA workflow
 
+Human-gated: the upload itself is performed by the maintainer, never
+by automation. The release candidate is prepared with:
+
 ```bash
-git checkout v0.1.0
-gbp buildpackage --git-tag --git-pbuilder
-dput ppa:<owner>/intp ../intp_0.1.0-1_source.changes
+# binary build + lintian locally
+dpkg-buildpackage -us -uc
+lintian -EvIL +pedantic ../intp_0.9.0~rc1-1_amd64.changes
+
+# source package for the PPA (after the remote gate passes and the
+# v0.9.0 tag is stamped):
+debuild -S -sa
+dput ppa:<owner>/intp ../intp_0.9.0-1_source.changes
 ```
 
-PPA configuration lives in `packaging/debian/ppa-config.yml` (TBD).
+Notes for the Launchpad build environment:
+
+- builders have no `/sys/kernel/btf/vmlinux`; the checked-in
+  `src/backends/ebpf/vmlinux/x86_64/vmlinux.h` fallback (selected by
+  `scripts/gen-vmlinux.sh`) is what keeps `-Dwith_ebpf=enabled`
+  building there — test the masked-BTF path before uploading.
+- a `jammy` (22.04) series build downgrades eBPF at configure time
+  (libbpf 0.5 < 0.8); the binary stays schema-compatible per ADR-0003.
+- before the first upload, sweep the `intp` namespace (Debian, Ubuntu,
+  Launchpad, AUR, COPR, nixpkgs); fallback name `intp-profiler`.
 
 ---
 
