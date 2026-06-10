@@ -163,7 +163,7 @@ step8_experimental() {
 		echo 'portable smoke done (adjudication: bench/analyze-portable.py in across-intp)'"
 }
 
-for s in ${STEPS[@]}; do
+for s in "${STEPS[@]}"; do
 	case "$s" in
 	1) step1_preflight ;;
 	2) step2_build ;;
