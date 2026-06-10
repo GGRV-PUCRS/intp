@@ -1,0 +1,208 @@
+/* SPDX-License-Identifier: MIT */
+/*
+ * core.h — internal core types: target binding, backend registry,
+ * dispatcher state. NOT installed; the public ABI lives in
+ * include/intp/.
+ *
+ * The backend model is ported from intp-comparison:
+ *   variants/v2.1-c-abi-cgroup/include/backend.h @ e73bc802931e
+ * adapted to ADR-0001 (linker-section registration, ordered selection
+ * recorded for --print-schema) and ADR-0010 (semantic model and
+ * degradation surfacing).
+ *
+ * A backend is a (probe, init, read, cleanup) tuple that collects one
+ * metric through one specific kernel interface:
+ *   probe()   — 0 if usable on this host (cheap, no side effects)
+ *   init()    — 0 on success, allocates resources (fds, mon_groups, …)
+ *   read()    — fills *out, returns 0 on success
+ *   cleanup() — releases all resources, must be safe to call twice
+ *
+ * Concurrency: backends keep file-scope state (ported v2.1 design), so
+ * at most ONE intp_ctx may be open per process. intp_open() enforces
+ * this with -EBUSY. Lifting the restriction is post-1.0 work.
+ */
+
+#ifndef INTP_CORE_H
+#define INTP_CORE_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <time.h>
+
+#include <intp/intp.h>
+#include <intp/metrics.h>
+#include <intp/plugin.h>
+#include <intp/schema.h>
+
+#define INTP_CORE_MAX_PIDS		256
+#define INTP_CORE_MAX_BACKENDS		8	/* per metric, after sort */
+
+/* ------------------------------------------------------------------------ */
+/* Target binding (singleton, ported v2.1 intp_target_t)                     */
+/* ------------------------------------------------------------------------ */
+
+/* How the binding maps to a container/VM tenant. */
+enum intp_core_target_kind {
+	INTP_CORE_TARGET_DEFAULT = 0,	/* system-wide, or raw --pids/--cgroup */
+	INTP_CORE_TARGET_CONTAINER,	/* cgroup-scoped tenant */
+	INTP_CORE_TARGET_VM,		/* VM scope cgroup + host tap netp */
+};
+
+struct intp_core_target {
+	pid_t       pids[INTP_CORE_MAX_PIDS];
+	int         n_pids;
+	const char *cgroup_path;	/* may be NULL */
+	const char *iface;		/* may be NULL = autodetect */
+	const char *disk;		/* may be NULL = autodetect */
+	const char *tap_iface;		/* VM netp: host tap iface, or NULL */
+	enum intp_core_target_kind kind;
+	long        nic_speed_bps_override;	/* 0 = use detection */
+	long        mem_bw_max_bps_override;	/* 0 = use detection */
+	long        llc_size_bytes_override;	/* 0 = use detection */
+	long        disk_bw_max_bps_override;	/* 0 = use detection */
+};
+
+void intp_core_target_set(const struct intp_core_target *t);
+const struct intp_core_target *intp_core_target_get(void);
+
+/* ------------------------------------------------------------------------ */
+/* Per-read sample (ported v2.1 metric_sample_t)                             */
+/* ------------------------------------------------------------------------ */
+
+enum intp_core_status {
+	INTP_CORE_OK = 0,	/* primary backend, value reliable */
+	INTP_CORE_UNAVAILABLE,	/* no backend usable on this system */
+	INTP_CORE_DEGRADED,	/* using fallback or approximation */
+	INTP_CORE_PROXY,	/* value derived from a related metric */
+};
+
+struct intp_core_sample {
+	double                value;	/* percent [0,100] as documented */
+	enum intp_core_status status;
+	const char           *backend_id;
+	const char           *note;	/* human-readable diagnostic, or NULL */
+};
+
+const char *intp_core_status_str(enum intp_core_status s);
+
+/* ------------------------------------------------------------------------ */
+/* Backend descriptor and linker-section registration (ADR-0001)             */
+/* ------------------------------------------------------------------------ */
+
+struct intp_core_backend {
+	const char *metric;	/* short name: "cpu", "blk", … */
+	const char *id;		/* backend id: "procfs_system", "resctrl", … */
+	const char *description;/* one line, for --list-backends */
+	const char *model;	/* semantic model id (ADR-0010) */
+	const char *scope;	/* "system" | "pid" | "cgroup" | "vm" */
+	const char *requires;	/* human-readable probe requirement */
+	enum intp_priority priority;
+	int  (*probe)(void);
+	int  (*init)(void);
+	int  (*read)(struct intp_core_sample *out, double interval_sec);
+	void (*cleanup)(void);
+};
+
+#if defined(__has_attribute)
+#if __has_attribute(retain)
+#define INTP_SECTION_KEEP __attribute__((used, retain))
+#else
+#define INTP_SECTION_KEEP __attribute__((used))
+#endif
+#else
+#define INTP_SECTION_KEEP __attribute__((used))
+#endif
+
+/**
+ * INTP_BACKEND_REGISTER — place a pointer to a backend descriptor in
+ * the "intp_backends" linker section. The registry walks the section
+ * at intp_open() time; no central list to edit.
+ */
+#define INTP_BACKEND_REGISTER(sym)					\
+	INTP_SECTION_KEEP						\
+	__attribute__((section("intp_backends"),			\
+		       aligned(sizeof(void *))))			\
+	static const struct intp_core_backend *const sym##_reg = &(sym)
+
+/* ------------------------------------------------------------------------ */
+/* Selection state (per metric, recorded for --print-schema)                 */
+/* ------------------------------------------------------------------------ */
+
+struct intp_core_rejection {
+	const struct intp_core_backend *backend;
+	const char                     *reason;	/* static string */
+};
+
+struct intp_core_selection {
+	const char                     *metric;		/* short name */
+	const char                     *full_name;	/* system.interference.* */
+	const struct intp_core_backend *candidates[INTP_CORE_MAX_BACKENDS];
+	int                             n_candidates;
+	const struct intp_core_backend *active;	/* NULL = unavailable */
+	struct intp_core_rejection      rejected[INTP_CORE_MAX_BACKENDS];
+	int                             n_rejected;
+	bool                            disabled;	/* by operator */
+};
+
+/* ------------------------------------------------------------------------ */
+/* Context                                                                   */
+/* ------------------------------------------------------------------------ */
+
+struct intp_sample_buffer {
+	struct intp_metric_value *vals;
+	size_t                    len;
+	size_t                    cap;
+};
+
+struct intp_ctx {
+	struct intp_options        opts;	/* shallow copy; lists owned by caller */
+	struct intp_core_target    target;
+	char                       cgroup_path_buf[512];
+	char                       host[256];
+
+	struct intp_core_selection sel[INTP_CORE_METRICS_COUNT];
+	int                        n_active;	/* metrics with a bound backend */
+
+	struct intp_sample_buffer buf;
+	struct intp_sample        sample;
+
+	struct timespec            next_deadline;	/* CLOCK_MONOTONIC */
+	bool                       deadline_armed;
+
+	struct intp_metric_schema  schema[INTP_CORE_METRICS_COUNT];
+	size_t                     schema_len;
+};
+
+/* ------------------------------------------------------------------------ */
+/* Core entry points (called from the public wrappers in libintp.c)          */
+/* ------------------------------------------------------------------------ */
+
+int  intp_core_open(const struct intp_options *opts, struct intp_ctx **out);
+void intp_core_close(struct intp_ctx *ctx);
+int  intp_core_sample(struct intp_ctx *ctx, struct intp_sample *out);
+int  intp_core_print_schema(struct intp_ctx *ctx, int fd);
+
+/* Registry helpers (also used by the unit tests). */
+int  intp_core_registry_build(struct intp_ctx *ctx);
+int  intp_core_select(struct intp_ctx *ctx);
+int  intp_core_init_backends(struct intp_ctx *ctx);
+void intp_core_read_metric(struct intp_core_selection *sel,
+			   struct intp_core_sample *out,
+			   double interval_sec);
+void intp_core_cleanup_backends(struct intp_ctx *ctx);
+int  intp_core_force_backend(struct intp_ctx *ctx, const char *metric,
+			     const char *backend_id);
+void intp_core_disable_metric(struct intp_ctx *ctx, const char *metric);
+
+/* Frozen short-name order: netp nets blk mbw llcmr llcocc cpu. */
+extern const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT];
+
+/* Sample buffer (real implementations behind the public append API). */
+int intp_core_buf_append(struct intp_sample_buffer *buf,
+			 const char *name, enum intp_unit unit,
+			 enum intp_value_kind kind, double d,
+			 int64_t i64, uint64_t u64);
+
+#endif /* INTP_CORE_H */

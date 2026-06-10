@@ -16,14 +16,28 @@ if prometheus_enabled
         libintp_deps += mhd_dep
 endif
 
+# Internal static archive: the whole implementation (public wrappers,
+# core registry/dispatcher, backends, output sinks). It exists so that
+# (a) the shared library link_whole's it, and (b) unit tests and the
+# CLI can link it directly — link_whole keeps the otherwise-unreferenced
+# backend registration objects, whose linker-section entries the
+# registry walks at runtime (ADR-0001).
+intp_internal = static_library(
+        'intp-internal',
+        libintp_sources + core_sources + backend_sources + output_sources,
+        include_directories: intp_include,
+        c_args: ['-fvisibility=hidden'],
+        pic: true,
+        dependencies: libintp_deps,
+)
+
 libintp = library(
         'intp',
-        libintp_sources,
         version: meson.project_version(),
         soversion: '0',
         include_directories: intp_include,
-        c_args: ['-fvisibility=hidden'],
         gnu_symbol_visibility: 'hidden',
+        link_whole: intp_internal,
         dependencies: libintp_deps,
         install: true,
 )
@@ -31,4 +45,12 @@ libintp = library(
 libintp_dep = declare_dependency(
         link_with: libintp,
         include_directories: intp_include,
+)
+
+# For the CLI and registry unit tests: full internal symbol access plus
+# retained backend registration sections.
+intp_internal_dep = declare_dependency(
+        link_whole: intp_internal,
+        include_directories: intp_include,
+        dependencies: libintp_deps,
 )

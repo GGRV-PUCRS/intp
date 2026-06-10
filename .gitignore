@@ -77,8 +77,10 @@ venv/
 *.log
 /results/
 /bench-output/
-core
-core.*
+# Coredump files only — anchored to the repo root so the rule cannot
+# swallow source directories like src/core/.
+/core
+/core.*
 
 # --- Editor / IDE ------------------------------------------------------------
 .idea/

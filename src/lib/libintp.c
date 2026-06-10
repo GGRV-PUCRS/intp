@@ -1,24 +1,11 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * libintp.c — stage-1.5 scaffold implementation.
+ * libintp.c — public ABI surface.
  *
- * Real backend dispatch, plugin loading, and sample collection land
- * in Stage 2 of the roadmap. This file currently provides:
- *
- *   - intp_version_string() — reads INTP_VERSION from version.h.
- *   - intp_unit_name() — returns the canonical unit name.
- *   - intp_strerror() — translates intp error codes.
- *   - The seven core metric name constants (intp_core_metric_names).
- *   - intp_open/close/sample/subscribe/print_schema — return -ENOSYS,
- *     i.e. "no implementation yet". The CLI handles --version,
- *     --help, and --print-schema (with a static skeleton) directly,
- *     so the binary builds and runs even before Stage 2.
- *
- * This is deliberately small: the goal of Stage 1.5 is to lock in the
- * public surface (linkage, header layout, version reporting) so that
- * downstream tooling — pkg-config, distro packagers, the example
- * plugin in Step 5 — can compile against libintp before the
- * implementation backfills it.
+ * Every exported symbol is defined here with explicit default
+ * visibility; the implementations live in src/core/ (registry,
+ * dispatcher, context lifecycle). Keeping the ABI surface in one file
+ * keeps abidiff reviews focused.
  */
 
 #include <errno.h>
@@ -29,6 +16,8 @@
 #include <intp/metrics.h>
 #include <intp/plugin.h>
 #include <intp/schema.h>
+
+#include "../core/core.h"
 
 /* INTP_VERSION is already a quoted string literal (Meson injects it
  * via configuration_data.set_quoted), so we return it as-is. */
@@ -91,64 +80,60 @@ const char *intp_strerror(int err)
 }
 
 /* ------------------------------------------------------------------------ */
-/* Stub implementations — Stage 2 will fill these in.                        */
+/* Lifecycle / sampling / schema — backed by src/core/.                      */
 /* ------------------------------------------------------------------------ */
 
 __attribute__((visibility("default")))
 int intp_open(const struct intp_options *opts, struct intp_ctx **out)
 {
-	(void)opts;
-	(void)out;
-	return -ENOSYS;
+	return intp_core_open(opts, out);
 }
 
 __attribute__((visibility("default")))
 void intp_close(struct intp_ctx *ctx)
 {
-	(void)ctx;
+	intp_core_close(ctx);
 }
 
 __attribute__((visibility("default")))
 int intp_sample(struct intp_ctx *ctx, struct intp_sample *out)
 {
-	(void)ctx;
-	(void)out;
-	return -ENOSYS;
+	return intp_core_sample(ctx, out);
 }
 
 __attribute__((visibility("default")))
 int intp_subscribe(struct intp_ctx *ctx,
 		   intp_sample_callback cb, void *user)
 {
-	(void)ctx;
-	(void)cb;
-	(void)user;
-	return -ENOSYS;
+	if (!ctx || !cb)
+		return -EINVAL;
+
+	for (;;) {
+		struct intp_sample s;
+		int rc = intp_core_sample(ctx, &s);
+
+		if (rc)
+			return rc;
+		if (cb(&s, user) != 0)
+			return 0;
+	}
 }
 
 __attribute__((visibility("default")))
 int intp_print_schema(struct intp_ctx *ctx, int fd)
 {
-	(void)ctx;
-	(void)fd;
-	return -ENOSYS;
+	return intp_core_print_schema(ctx, fd);
 }
 
-/* Plugin sample-buffer helpers — the real implementations live with
- * the registry in Stage 2; for now these just return -ENOSYS so the
- * symbols exist for plugins to link against (plugins do not link
- * against libintp directly, but the unit tests in tests/plugin-abi/
- * do, and they need the symbols to resolve). */
+/* Plugin sample-buffer helpers. Plugins do not link against libintp
+ * directly, but they call back into these through the dispatcher. */
 __attribute__((visibility("default")))
 int intp_sample_append_double(struct intp_sample_buffer *buf,
 			      const char *name, enum intp_unit unit,
 			      double value)
 {
-	(void)buf;
-	(void)name;
-	(void)unit;
-	(void)value;
-	return -ENOSYS;
+	return intp_core_buf_append(buf, name, unit, INTP_VALUE_DOUBLE,
+				    value, 0, 0);
 }
 
 __attribute__((visibility("default")))
@@ -156,11 +141,8 @@ int intp_sample_append_i64(struct intp_sample_buffer *buf,
 			   const char *name, enum intp_unit unit,
 			   int64_t value)
 {
-	(void)buf;
-	(void)name;
-	(void)unit;
-	(void)value;
-	return -ENOSYS;
+	return intp_core_buf_append(buf, name, unit, INTP_VALUE_INT64,
+				    0.0, value, 0);
 }
 
 __attribute__((visibility("default")))
@@ -168,22 +150,20 @@ int intp_sample_append_u64(struct intp_sample_buffer *buf,
 			   const char *name, enum intp_unit unit,
 			   uint64_t value)
 {
-	(void)buf;
-	(void)name;
-	(void)unit;
-	(void)value;
-	return -ENOSYS;
+	return intp_core_buf_append(buf, name, unit, INTP_VALUE_UINT64,
+				    0.0, 0, value);
 }
 
 __attribute__((visibility("default")))
 int intp_sample_append_unavailable(struct intp_sample_buffer *buf,
 				   const char *name)
 {
-	(void)buf;
-	(void)name;
-	return -ENOSYS;
+	return intp_core_buf_append(buf, name, INTP_UNIT_UNSPECIFIED,
+				    INTP_VALUE_NONE, 0.0, 0, 0);
 }
 
+/* Plugin private-state accessors — real storage lands with the plugin
+ * loader (Phase 5); the symbols stay ABI-compatible no-ops until then. */
 __attribute__((visibility("default")))
 void *intp_plugin_ctx_get_private(struct intp_plugin_ctx *ctx)
 {
@@ -198,29 +178,31 @@ void intp_plugin_ctx_set_private(struct intp_plugin_ctx *ctx, void *priv)
 	(void)priv;
 }
 
-/* Schema introspection — minimal placeholders until the real
- * registry lands in Stage 2. */
+/* Schema introspection. */
 __attribute__((visibility("default")))
 size_t intp_schema_size(const struct intp_ctx *ctx)
 {
-	(void)ctx;
-	return 0;
+	return ctx ? ctx->schema_len : 0;
 }
 
 __attribute__((visibility("default")))
 const struct intp_metric_schema *
 intp_schema_get(const struct intp_ctx *ctx, size_t index)
 {
-	(void)ctx;
-	(void)index;
-	return NULL;
+	if (!ctx || index >= ctx->schema_len)
+		return NULL;
+	return &ctx->schema[index];
 }
 
 __attribute__((visibility("default")))
 const struct intp_metric_schema *
 intp_schema_find(const struct intp_ctx *ctx, const char *name)
 {
-	(void)ctx;
-	(void)name;
+	if (!ctx || !name)
+		return NULL;
+	for (size_t i = 0; i < ctx->schema_len; i++) {
+		if (strcmp(ctx->schema[i].name, name) == 0)
+			return &ctx->schema[i];
+	}
 	return NULL;
 }
