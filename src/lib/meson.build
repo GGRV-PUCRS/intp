@@ -25,7 +25,7 @@ endif
 intp_internal = static_library(
         'intp-internal',
         libintp_sources + core_sources + backend_sources + output_sources
-                + ebpf_sources + ebpf_gen_sources,
+                + portable_sources + ebpf_sources + ebpf_gen_sources,
         include_directories: [intp_include] + (ebpf_enabled ? [ebpf_inc] : []),
         c_args: ['-fvisibility=hidden'],
         pic: true,

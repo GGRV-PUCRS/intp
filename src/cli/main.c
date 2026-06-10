@@ -37,8 +37,27 @@ static const char usage_text[] =
 	"\n"
 	"Targeting:\n"
 	"  -p, --pid PID              profile a specific process\n"
+	"      --pids LIST            profile a comma-separated PID list\n"
+	"      --comm NAME            profile every process with this comm "
+	"name\n"
 	"  -c, --cgroup PATH          profile a cgroup-v2 path (post-1.0)\n"
+	"      --target-container P   alias of --cgroup (container tenant)\n"
+	"      --target-vm IFACE      (experimental) profile a KVM/QEMU VM "
+	"via its\n"
+	"                             host tap iface; combine with -c "
+	"QEMU_SCOPE\n"
+	"      --tap-iface NAME       host tap/vnet iface for VM netp\n"
+	"      --exact                leaf-only cgroup matching (skip the "
+	"subtree)\n"
 	"      (default: profile the whole system)\n"
+	"\n"
+	"Experimental (require --experimental; ADR-0008):\n"
+	"      --experimental         opt in to experimental features\n"
+	"      --portable-metrics     (experimental) append the "
+	"system.portable.*\n"
+	"                             metric set (schedlat psi_mem membw_est "
+	"psi_io\n"
+	"                             schedthr steal psp idle_preempt)\n"
 	"\n"
 	"Sampling:\n"
 	"  -i, --interval DURATION    sampling interval (default: 1s; e.g. "
@@ -172,6 +191,14 @@ enum {
 	OPT_DISK_BW,
 	OPT_IFACE,
 	OPT_DISK,
+	OPT_PIDS,
+	OPT_COMM,
+	OPT_TARGET_CONTAINER,
+	OPT_TARGET_VM,
+	OPT_TAP_IFACE,
+	OPT_EXACT,
+	OPT_EXPERIMENTAL,
+	OPT_PORTABLE,
 };
 
 static const struct option long_opts[] = {
@@ -199,6 +226,14 @@ static const struct option long_opts[] = {
 	{"disk-bw-max-bps", required_argument, NULL, OPT_DISK_BW},
 	{"iface", required_argument, NULL, OPT_IFACE},
 	{"disk", required_argument, NULL, OPT_DISK},
+	{"pids", required_argument, NULL, OPT_PIDS},
+	{"comm", required_argument, NULL, OPT_COMM},
+	{"target-container", required_argument, NULL, OPT_TARGET_CONTAINER},
+	{"target-vm", required_argument, NULL, OPT_TARGET_VM},
+	{"tap-iface", required_argument, NULL, OPT_TAP_IFACE},
+	{"exact", no_argument, NULL, OPT_EXACT},
+	{"experimental", no_argument, NULL, OPT_EXPERIMENTAL},
+	{"portable-metrics", no_argument, NULL, OPT_PORTABLE},
 	{NULL, 0, NULL, 0},
 };
 
@@ -459,6 +494,10 @@ int main(int argc, char *argv[])
 	size_t n_disabled_metrics = 0;
 	struct intp_core_force forces[16];
 	struct intp_core_extras extras = {0};
+	static pid_t pid_list[INTP_CORE_MAX_PIDS];
+	const char *cgroup_arg = NULL; /* -c / --target-container */
+	bool vm_target = false;	       /* --target-vm given */
+	bool want_portable = false;    /* --portable-metrics given */
 	int opt;
 
 	while ((opt = getopt_long(argc, argv, "p:c:i:d:f:vVh", long_opts,
@@ -487,8 +526,51 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'c':
+		case OPT_TARGET_CONTAINER:
 			opts.target.kind = INTP_TARGET_CGROUP;
 			opts.target.cgroup_path = optarg;
+			cgroup_arg = optarg;
+			break;
+		case OPT_PIDS:
+			extras.n_pids = intp_parse_pid_list(optarg, pid_list,
+							    INTP_CORE_MAX_PIDS);
+			if (extras.n_pids <= 0) {
+				fprintf(stderr, "intp: bad --pids list: %s\n",
+					optarg);
+				return 2;
+			}
+			extras.pids = pid_list;
+			break;
+		case OPT_COMM:
+			extras.n_pids =
+				intp_find_pids_by_comm(optarg, pid_list,
+						       INTP_CORE_MAX_PIDS);
+			if (extras.n_pids == 0)
+				fprintf(stderr,
+					"intp: warning: no PIDs found for "
+					"comm '%s'\n",
+					optarg);
+			extras.pids = pid_list;
+			break;
+		case OPT_TARGET_VM:
+			/* VM netp comes from the host-side tap iface; the
+			 * other six metrics are scoped by a separate
+			 * -c <qemu scope> passed alongside (the union then
+			 * carries cgroup_path while kind stays VM). */
+			opts.target.tap_iface = optarg;
+			vm_target = true;
+			break;
+		case OPT_TAP_IFACE:
+			opts.target.tap_iface = optarg;
+			break;
+		case OPT_EXACT:
+			extras.exact = 1;
+			break;
+		case OPT_EXPERIMENTAL:
+			opts.experimental = true;
+			break;
+		case OPT_PORTABLE:
+			want_portable = true;
 			break;
 		case 'i': {
 			long ms = parse_duration_ms(optarg);
@@ -568,6 +650,42 @@ int main(int argc, char *argv[])
 			return 2;
 		}
 	}
+
+	/* --target-vm wins over any -c/-p kind set during parsing: the
+	 * union carries the qemu-scope cgroup path (or NULL) while the
+	 * kind stays VM (ported v2.1 --target-vm + --cgroup pairing). */
+	if (vm_target) {
+		opts.target.kind = INTP_TARGET_VM;
+		opts.target.cgroup_path = cgroup_arg;
+	}
+
+	/* Experimental fences (ADR-0008): refuse BEFORE opening, with
+	 * the friendly message; intp_core_open_ex enforces -EPERM too. */
+	if (vm_target && !opts.experimental) {
+		fprintf(stderr,
+			"intp: --target-vm is experimental and requires "
+			"--experimental.\n"
+			"      VM targeting is unvalidated, pending the "
+			"C26/C27 validation campaign\n"
+			"      on the RDT testbed. See the \"stability\" "
+			"fields in --print-schema for\n"
+			"      what is validated today.\n");
+		return 2;
+	}
+	if (want_portable && !opts.experimental) {
+		fprintf(stderr,
+			"intp: --portable-metrics is experimental and "
+			"requires --experimental.\n"
+			"      The system.portable.* set is unvalidated, "
+			"pending the C26/C27\n"
+			"      validation campaign on the RDT testbed. See "
+			"the \"stability\" fields\n"
+			"      in --print-schema for what is validated "
+			"today.\n");
+		return 2;
+	}
+	if (want_portable)
+		extras.portable_metrics = 1;
 
 	if (n_disabled > 0)
 		opts.disabled_backends = disabled_backends;

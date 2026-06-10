@@ -54,10 +54,37 @@ rejected.
 .BR \-p ", " \-\-pid " \fIPID\fR"
 Profile a specific process.
 .TP
+.B \-\-pids \fILIST\fR
+Profile a comma-separated list of PIDs (e.g. \fB1234,1235\fR).
+Overrides \fB\-\-pid\fR.
+.TP
+.B \-\-comm \fINAME\fR
+Profile every process whose \fI/proc/<pid>/comm\fR equals \fINAME\fR.
+Warns when no process matches.
+.TP
 .BR \-c ", " \-\-cgroup " \fIPATH\fR"
 Profile a cgroup-v2 path.
+.TP
+.B \-\-target\-container \fIPATH\fR
+Alias of \fB\-\-cgroup\fR with an explicit container-tenant intent.
+.TP
+.B \-\-target\-vm \fIIFACE\fR
+(Experimental; requires \fB\-\-experimental\fR.) Profile a KVM/QEMU
+virtual machine: network attribution (netp) comes from the host-side
+tap/vnet interface \fIIFACE\fR; pass \fB\-c\fR \fIQEMU_SCOPE\fR
+alongside so the other six metrics attribute to the VM's cgroup
+scope.
+.TP
+.B \-\-tap\-iface \fINAME\fR
+Set the host tap/vnet interface for VM netp without changing the
+target kind.
+.TP
+.B \-\-exact
+Leaf-only cgroup matching: attribute only events of tasks in exactly
+the targeted cgroup, not its descendants (default: the whole
+subtree).
 .PP
-With neither option, the whole system is profiled.
+With none of these options, the whole system is profiled.
 .SS Sampling
 .TP
 .BR \-i ", " \-\-interval " \fIDURATION\fR"
@@ -120,6 +147,67 @@ wrong or for cross-host comparability:
 .B \-\-disk\-bw\-max\-bps\fR,
 .B \-\-iface\fR,
 .B \-\-disk\fR.
+.SS Experimental
+.TP
+.B \-\-experimental
+Opt in to experimental features (see
+.BR "EXPERIMENTAL FEATURES" ).
+.TP
+.B \-\-portable\-metrics
+(Experimental; requires \fB\-\-experimental\fR.) Additionally collect
+the eight VM-portable metrics in the
+.B system.portable.*
+namespace:
+.B schedlat
+(run-queue/scheduling latency),
+.B psi_mem
+(PSI memory pressure),
+.B membw_est
+(DRAM-bandwidth estimate, bytes/s),
+.B psi_io
+(PSI I/O pressure),
+.B schedthr
+(CFS throttling, cgroup-only),
+.B steal
+(hypervisor-stolen vCPU time),
+.B psp
+(involuntary preemption rate, events/s), and
+.B idle_preempt
+(idle-CPU takeover rate; eBPF-only, unavailable on the pure-C
+provider). They appear in
+.B jsonl
+and
+.B prometheus
+output;
+.B tsv\-legacy\-v1
+keeps emitting exactly the seven frozen columns.
+.SH EXPERIMENTAL FEATURES
+Capabilities whose validation campaign has not yet run ship behind a
+deliberate fence (ADR-0008): they refuse to start without
+.B \-\-experimental
+and exit with status 2, naming what is unvalidated. Currently fenced:
+.B \-\-target\-vm
+(VM targeting) and
+.B \-\-portable\-metrics
+(the
+.B system.portable.*
+metric set), both pending the C26/C27 validation campaign on the RDT
+testbed.
+.PP
+Every metric in
+.B \-\-print\-schema
+carries a
+.B stability
+field \(em
+.B stable
+for the seven core metrics,
+.B experimental
+for the portable set \(em so consumers can tell the trusted surface
+from the opt-in one. Experimental output never enters
+.B tsv\-legacy\-v1
+or the frozen
+.B system.interference.*
+namespace, and may change or disappear in a minor release.
 .SH SEMANTIC MODELS
 Two backends of the same metric may measure different latent
 quantities. The selected backend's model is declared in

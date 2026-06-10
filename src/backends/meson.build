@@ -25,3 +25,12 @@ ebpf_inc = []
 if ebpf_enabled
         subdir('ebpf')
 endif
+
+# Portable-metrics in-tree provider (ADR-0009): pure stable-ABI C, no
+# new deps, folded into intp_internal unconditionally — it is inert
+# unless opened with experimental+portable_metrics (ADR-0008). The
+# sources live under src/plugins/portable-metrics/; meson's subdir()
+# cannot traverse '..', so they are listed here by relative path.
+portable_sources = files(
+        '../plugins/portable-metrics/portable.c',
+)

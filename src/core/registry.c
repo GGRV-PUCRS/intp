@@ -13,9 +13,11 @@
  * silently zeroed.
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "core.h"
@@ -35,6 +37,70 @@ void intp_core_target_set(const struct intp_core_target *t)
 const struct intp_core_target *intp_core_target_get(void)
 {
 	return &g_target;
+}
+
+/* Target-spec helpers ported VERBATIM from intp-comparison:
+ *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
+ * (intp_parse_pid_list / intp_find_pids_by_comm). */
+
+int intp_parse_pid_list(const char *spec, pid_t *out, int max)
+{
+	if (!spec || !out || max <= 0)
+		return 0;
+	int n = 0;
+	const char *p = spec;
+
+	while (*p && n < max) {
+		char *end;
+		long v = strtol(p, &end, 10);
+
+		if (end == p || v <= 0)
+			break;
+		out[n++] = (pid_t)v;
+		if (*end == ',')
+			p = end + 1;
+		else
+			p = end;
+	}
+	return n;
+}
+
+int intp_find_pids_by_comm(const char *comm, pid_t *out, int max)
+{
+	if (!comm || !out || max <= 0)
+		return 0;
+	DIR *d = opendir("/proc");
+
+	if (!d)
+		return 0;
+	struct dirent *e;
+	int n = 0;
+
+	while ((e = readdir(d)) != NULL && n < max) {
+		if (e->d_type != DT_DIR && e->d_type != DT_UNKNOWN)
+			continue;
+		if (e->d_name[0] < '0' || e->d_name[0] > '9')
+			continue;
+		char path[320], buf[256];
+
+		snprintf(path, sizeof(path), "/proc/%.32s/comm", e->d_name);
+		FILE *f = fopen(path, "r");
+
+		if (!f)
+			continue;
+		if (fgets(buf, sizeof(buf), f)) {
+			size_t len = strlen(buf);
+
+			while (len &&
+			       (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+				buf[--len] = '\0';
+			if (strcmp(buf, comm) == 0)
+				out[n++] = (pid_t)atoi(e->d_name);
+		}
+		fclose(f);
+	}
+	closedir(d);
+	return n;
 }
 
 const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT] = {
