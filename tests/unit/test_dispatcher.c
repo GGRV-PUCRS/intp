@@ -5,13 +5,12 @@
  * the sample-buffer append helpers.
  */
 
-#include "intp_test.h"
-
-#include "../../src/core/core.h"
-
 #include <errno.h>
 #include <math.h>
 #include <string.h>
+
+#include "../../src/core/core.h"
+#include "intp_test.h"
 
 /* A deterministic backend for "mbw" so the dispatcher has a known
  * value to publish (50% → 0.5 ratio). */
@@ -60,10 +59,11 @@ int main(void)
 	INTP_TEST_BEGIN("core/dispatcher");
 
 	/* --- sample buffer helpers --- */
-	struct intp_sample_buffer buf = { 0 };
+	struct intp_sample_buffer buf = {0};
 
 	INTP_EXPECT_EQ(intp_sample_append_double(&buf, "a.b", INTP_UNIT_RATIO,
-						 0.25), 0);
+						 0.25),
+		       0);
 	INTP_EXPECT_EQ(intp_sample_append_unavailable(&buf, "a.c"), 0);
 	INTP_EXPECT_EQ((int)buf.len, 2);
 	INTP_EXPECT_EQ((int)buf.vals[0].kind, (int)INTP_VALUE_DOUBLE);
@@ -71,14 +71,23 @@ int main(void)
 
 	/* Re-appending an existing name replaces, not duplicates. */
 	INTP_EXPECT_EQ(intp_sample_append_double(&buf, "a.b", INTP_UNIT_RATIO,
-						 0.75), 0);
+						 0.75),
+		       0);
 	INTP_EXPECT_EQ((int)buf.len, 2);
 	INTP_EXPECT(buf.vals[0].d > 0.74 && buf.vals[0].d < 0.76);
 	free(buf.vals);
 
 	/* --- end-to-end sample through the dispatcher --- */
+	/* nets is disabled so the unavailable->INTP_VALUE_NONE path is
+	 * exercised deterministically on any host. */
+	const char *nets_off[] = {
+		"nets:procfs_softirq",
+		"nets:procfs_throughput",
+		NULL,
+	};
 	struct intp_options opts = {
-		.interval_ms = 10,	/* keep the test fast */
+		.interval_ms = 10, /* keep the test fast */
+		.disabled_backends = nets_off,
 	};
 	struct intp_ctx *ctx = NULL;
 
@@ -91,8 +100,7 @@ int main(void)
 	/* All seven core metrics appear, in the frozen order. */
 	INTP_EXPECT_EQ((int)s.values_len, INTP_CORE_METRICS_COUNT);
 	for (size_t i = 0; i < INTP_CORE_METRICS_COUNT; i++)
-		INTP_EXPECT_STREQ(s.values[i].name,
-				  intp_core_metric_names[i]);
+		INTP_EXPECT_STREQ(s.values[i].name, intp_core_metric_names[i]);
 
 	/* mbw backed by the fake: 50% → ratio 0.5. */
 	const struct intp_metric_value *mbw =
@@ -111,15 +119,16 @@ int main(void)
 	INTP_EXPECT_EQ((int)cpu->kind, (int)INTP_VALUE_DOUBLE);
 	INTP_EXPECT(cpu->d >= 0.0 && cpu->d <= 1.0);
 
-	/* blk has no Phase-1 backend: present in the array but NONE. */
-	const struct intp_metric_value *blk = NULL;
+	/* nets was operator-disabled: present in the array but NONE
+	 * (and therefore invisible to intp_sample_find / JSONL). */
+	const struct intp_metric_value *nets = NULL;
 
 	for (size_t i = 0; i < s.values_len; i++) {
-		if (strcmp(s.values[i].name, INTP_METRIC_BLK) == 0)
-			blk = &s.values[i];
+		if (strcmp(s.values[i].name, INTP_METRIC_NETS) == 0)
+			nets = &s.values[i];
 	}
-	INTP_EXPECT_NOT_NULL(blk);
-	INTP_EXPECT_EQ((int)blk->kind, (int)INTP_VALUE_NONE);
+	INTP_EXPECT_NOT_NULL(nets);
+	INTP_EXPECT_EQ((int)nets->kind, (int)INTP_VALUE_NONE);
 
 	/* host string is populated. */
 	INTP_EXPECT_NOT_NULL(s.host);

@@ -3,14 +3,17 @@
  * procutil.c — procfs / sysfs parsing helpers.
  *
  * Ported from intp-comparison:
- *   variants/v2.1-c-abi-cgroup/src/procutil.c @ e73bc802931e
+ *   variants/v2.1-c-abi-cgroup/src/procutil.c @ 2e87b30fc762
  * Parsing logic is preserved verbatim (reformatted to kernel style);
  * the typedef names became struct tags per the tree's conventions.
  */
 
 #include "procutil.h"
 
+#include <sys/stat.h>
+
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,11 +69,11 @@ int procutil_read_diskstats(struct diskstats_entry *entries, size_t max)
 		unsigned long w_compl, w_merg, w_sect, w_ms;
 		unsigned long inflight, io_ticks, tiq;
 		int matched = sscanf(line,
-			"%u %u %31s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-			&maj, &min, name,
-			&r_compl, &r_merg, &r_sect, &r_ms,
-			&w_compl, &w_merg, &w_sect, &w_ms,
-			&inflight, &io_ticks, &tiq);
+				     "%u %u %31s %lu %lu %lu %lu %lu %lu %lu "
+				     "%lu %lu %lu %lu",
+				     &maj, &min, name, &r_compl, &r_merg,
+				     &r_sect, &r_ms, &w_compl, &w_merg, &w_sect,
+				     &w_ms, &inflight, &io_ticks, &tiq);
 
 		if (matched < 13)
 			continue;
@@ -123,13 +126,11 @@ int procutil_read_netdev_at(const char *path, struct netdev_entry *entries,
 		unsigned long tx_b, tx_p, tx_e, tx_d, tx_f, tx_co, tx_ca,
 			tx_co2;
 		int matched = sscanf(line,
-			"%31s %lu %lu %lu %lu %lu %lu %lu %lu "
-			"%lu %lu %lu %lu %lu %lu %lu %lu",
-			iface,
-			&rx_b, &rx_p, &rx_e, &rx_d, &rx_f, &rx_fr, &rx_c,
-			&rx_m,
-			&tx_b, &tx_p, &tx_e, &tx_d, &tx_f, &tx_co, &tx_ca,
-			&tx_co2);
+				     "%31s %lu %lu %lu %lu %lu %lu %lu %lu "
+				     "%lu %lu %lu %lu %lu %lu %lu %lu",
+				     iface, &rx_b, &rx_p, &rx_e, &rx_d, &rx_f,
+				     &rx_fr, &rx_c, &rx_m, &tx_b, &tx_p, &tx_e,
+				     &tx_d, &tx_f, &tx_co, &tx_ca, &tx_co2);
 
 		if (matched < 17)
 			continue;
@@ -151,8 +152,7 @@ int procutil_read_netdev(struct netdev_entry *entries, size_t max)
 	return procutil_read_netdev_at("/proc/net/dev", entries, max);
 }
 
-int procutil_read_cgroup_procs(const char *cgroup_path, pid_t *out,
-			       size_t max)
+int procutil_read_cgroup_procs(const char *cgroup_path, pid_t *out, size_t max)
 {
 	if (!cgroup_path || !out || max == 0)
 		return 0;
@@ -173,6 +173,70 @@ int procutil_read_cgroup_procs(const char *cgroup_path, pid_t *out,
 		out[n++] = (pid_t)pid;
 	fclose(f);
 	return (int)n;
+}
+
+/* Recursive worker: append this cgroup's cgroup.procs, then descend
+ * into every child cgroup, carrying the running count `n`. Returns the
+ * new count. */
+static size_t read_cgroup_procs_rec(const char *cgroup_path, pid_t *out,
+				    size_t max, size_t n, int depth)
+{
+	if (n >= max || depth > 16)
+		return n;
+
+	char p[512];
+
+	snprintf(p, sizeof(p), "%s/cgroup.procs", cgroup_path);
+
+	FILE *f = fopen(p, "r");
+
+	if (f) {
+		int pid;
+
+		while (n < max && fscanf(f, "%d", &pid) == 1)
+			out[n++] = (pid_t)pid;
+		fclose(f);
+	}
+
+	DIR *d = opendir(cgroup_path);
+
+	if (d) {
+		struct dirent *de;
+
+		while (n < max && (de = readdir(d)) != NULL) {
+			/* Skip ONLY "." and ".." — NOT every dot-dir:
+			 * incus/lxc place the container's payload in a
+			 * ".lxc" child cgroup, so skipping all dot-dirs
+			 * misses the actual workload (idle
+			 * systemd-service cgroups are non-dot, so a
+			 * blanket dot-skip found only those → psp read
+			 * 0). */
+			if (strcmp(de->d_name, ".") == 0 ||
+			    strcmp(de->d_name, "..") == 0)
+				continue;
+
+			char child[512];
+
+			snprintf(child, sizeof(child), "%s/%s", cgroup_path,
+				 de->d_name);
+
+			struct stat st;
+
+			if (stat(child, &st) == 0 && S_ISDIR(st.st_mode))
+				n = read_cgroup_procs_rec(child, out, max, n,
+							  depth + 1);
+		}
+		closedir(d);
+	}
+	return n;
+}
+
+int procutil_read_cgroup_procs_rec(const char *cgroup_path, pid_t *out,
+				   size_t max)
+{
+	if (!cgroup_path || !out || max == 0)
+		return 0;
+	return (int)read_cgroup_procs_rec(cgroup_path, out, max, 0, 0);
 }
 
 int procutil_read_net_softirqs(unsigned long *net_tx, unsigned long *net_rx)
@@ -267,10 +331,10 @@ int procutil_read_proc_stat(pid_t pid, unsigned long *utime,
 	int ppid, pgrp, session, tty_nr, tpgid;
 	unsigned int flags;
 	unsigned long minflt, cminflt, majflt, cmajflt, ut, st;
-	int matched = sscanf(rp,
-		" %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu",
-		&state, &ppid, &pgrp, &session, &tty_nr, &tpgid,
-		&flags, &minflt, &cminflt, &majflt, &cmajflt, &ut, &st);
+	int matched =
+		sscanf(rp, " %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu",
+		       &state, &ppid, &pgrp, &session, &tty_nr, &tpgid, &flags,
+		       &minflt, &cminflt, &majflt, &cmajflt, &ut, &st);
 
 	if (matched != 13)
 		return -1;
@@ -300,9 +364,9 @@ int procutil_read_stat_total(unsigned long *total_jiffies,
 
 	/* "cpu  user nice sys idle iowait irq softirq steal guest gnice" */
 	unsigned long u, ni, sy, id, io, ir, sf, st, gu, gn;
-	int matched = sscanf(line,
-		"cpu  %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-		&u, &ni, &sy, &id, &io, &ir, &sf, &st, &gu, &gn);
+	int matched =
+		sscanf(line, "cpu  %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu", &u,
+		       &ni, &sy, &id, &io, &ir, &sf, &st, &gu, &gn);
 
 	if (matched < 4)
 		return -1;

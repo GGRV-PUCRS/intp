@@ -32,3 +32,22 @@ test('cli/print-schema-lists-7-core-metrics',
 # *not* added to the default suite. Until live/ has cases this is
 # a placeholder.
 # subdir('live')
+
+# Graceful degradation: on a host WITHOUT resctrl, the RDT-backed
+# metrics must be (a) absent from the JSONL stream — never zero — and
+# (b) explained in --print-schema. On resctrl-capable hosts the test
+# SKIPs (exit 77): the positive RDT path belongs to the remote gate.
+test('cli/degradation-no-resctrl',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        [ -d /sys/fs/resctrl/mon_groups ] && exit 77
+        OUT=$($BIN -i 200ms -d 1 2>/dev/null)
+        echo "$OUT" | grep -q "system.interference.cpu" || exit 1
+        echo "$OUT" | grep -q "system.interference.mbw" && exit 1
+        SCHEMA=$($BIN --print-schema)
+        echo "$SCHEMA" | grep -A4 "system.interference.mbw" | grep -q "available.: false" || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+)

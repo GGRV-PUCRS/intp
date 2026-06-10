@@ -4,7 +4,7 @@
  * per-metric candidate lists, probe-driven selection, init fall-through.
  *
  * Selection semantics ported from intp-comparison:
- *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ e73bc802931e
+ *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
  * (metric_select_backend / metric_init / metric_read / metric_cleanup /
  * metric_force_backend), reshaped onto ADR-0001: candidates come from
  * the "intp_backends" linker section instead of per-metric accessor
@@ -13,12 +13,12 @@
  * silently zeroed.
  */
 
-#include "core.h"
-
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "core.h"
 
 /* Linker-generated bounds of the registration section. */
 extern const struct intp_core_backend *const __start_intp_backends[];
@@ -44,11 +44,15 @@ const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT] = {
 const char *intp_core_status_str(enum intp_core_status s)
 {
 	switch (s) {
-	case INTP_CORE_OK:		return "ok";
-	case INTP_CORE_DEGRADED:	return "degraded";
-	case INTP_CORE_PROXY:		return "proxy";
+	case INTP_CORE_OK:
+		return "ok";
+	case INTP_CORE_DEGRADED:
+		return "degraded";
+	case INTP_CORE_PROXY:
+		return "proxy";
 	case INTP_CORE_UNAVAILABLE:
-	default:			return "unavailable";
+	default:
+		return "unavailable";
 	}
 }
 
@@ -112,8 +116,7 @@ int intp_core_registry_build(struct intp_ctx *ctx)
 					continue;
 				if ((int)b->priority != prio)
 					continue;
-				if (sel->n_candidates >=
-				    INTP_CORE_MAX_BACKENDS)
+				if (sel->n_candidates >= INTP_CORE_MAX_BACKENDS)
 					return -ENOSPC;
 				sel->candidates[sel->n_candidates++] = b;
 			}
@@ -140,8 +143,7 @@ int intp_core_select(struct intp_ctx *ctx)
 		}
 		sel->active = NULL;
 		for (int i = 0; i < sel->n_candidates; i++) {
-			const struct intp_core_backend *b =
-				sel->candidates[i];
+			const struct intp_core_backend *b = sel->candidates[i];
 
 			if (backend_disabled(ctx, b)) {
 				record_rejection(sel, b,
@@ -150,7 +152,8 @@ int intp_core_select(struct intp_ctx *ctx)
 			}
 			if (sel->active) {
 				record_rejection(sel, b,
-						 "lower priority than the selected backend");
+						 "lower priority than the "
+						 "selected backend");
 				continue;
 			}
 			if (!b->probe || b->probe() == 0) {
@@ -159,8 +162,9 @@ int intp_core_select(struct intp_ctx *ctx)
 				continue;
 			}
 			record_rejection(sel, b,
-					 b->requires ? b->requires
-						     : "capability probe failed");
+					 b->requires
+						 ? b->requires
+						 : "capability probe failed");
 		}
 	}
 	return any > 0 ? 0 : -ENODEV;
@@ -194,16 +198,17 @@ int intp_core_init_backends(struct intp_ctx *ctx)
 		const struct intp_core_backend *bound = NULL;
 
 		for (int i = start; i < sel->n_candidates; i++) {
-			const struct intp_core_backend *b =
-				sel->candidates[i];
+			const struct intp_core_backend *b = sel->candidates[i];
 
 			if (backend_disabled(ctx, b))
 				continue;
 			/* Re-check probe when falling through. */
 			if (i > start && b->probe && b->probe() != 0) {
-				record_rejection(sel, b,
-						 b->requires ? b->requires
-							     : "capability probe failed");
+				record_rejection(
+					sel, b,
+					b->requires
+						? b->requires
+						: "capability probe failed");
 				continue;
 			}
 			if (!b->init || b->init() == 0) {
@@ -229,8 +234,7 @@ int intp_core_init_backends(struct intp_ctx *ctx)
  * zero values.
  */
 void intp_core_read_metric(struct intp_core_selection *sel,
-			   struct intp_core_sample *out,
-			   double interval_sec)
+			   struct intp_core_sample *out, double interval_sec)
 {
 	if (!out)
 		return;
@@ -253,8 +257,7 @@ void intp_core_cleanup_backends(struct intp_ctx *ctx)
 		struct intp_core_selection *sel = &ctx->sel[m];
 
 		for (int i = 0; i < sel->n_candidates; i++) {
-			const struct intp_core_backend *b =
-				sel->candidates[i];
+			const struct intp_core_backend *b = sel->candidates[i];
 
 			if (b && b->cleanup)
 				b->cleanup();
@@ -280,8 +283,7 @@ int intp_core_force_backend(struct intp_ctx *ctx, const char *metric,
 		if (strcmp(sel->metric, metric) != 0)
 			continue;
 		for (int i = 0; i < sel->n_candidates; i++) {
-			const struct intp_core_backend *b =
-				sel->candidates[i];
+			const struct intp_core_backend *b = sel->candidates[i];
 
 			if (strcmp(b->id, backend_id) != 0)
 				continue;
