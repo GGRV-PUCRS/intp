@@ -8,6 +8,8 @@ Build-Depends:
  ninja-build,
  pkgconf,
  clang,
+ bpftool | linux-tools-generic,
+ linux-tools-common | bpftool,
  libbpf-dev (>= 0.8),
  libelf-dev,
  zlib1g-dev,

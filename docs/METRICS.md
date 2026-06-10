@@ -17,20 +17,20 @@ Treat those as the source of truth; this document is the index.
 
 ## The seven metrics, at a glance
 
-| Metric    | Unit  | What it measures                                                        | Default backend                    | eBPF-accelerated? |
-|-----------|-------|-------------------------------------------------------------------------|------------------------------------|:----------------:|
-| **netp**  | %     | NIC physical utilization (TX + RX bps / link bps).                      | `netlink` + `/sys/class/net/`      |        no        |
-| **nets**  | %     | Kernel network-stack service time (softirq NET_RX/NET_TX fraction).     | `/proc/stat` softirq deltas        |       yes        |
-| **blk**   | %     | Block device busy fraction (one or more pending I/Os).                  | `/proc/diskstats` `io_ticks`       |       yes        |
-| **mbw**   | %     | Memory bandwidth utilisation (LLC ↔ DRAM, summed across IMC channels).  | `perf_event_open` uncore IMC       |        no        |
-| **llcmr** | %     | LLC miss ratio (`MEM_LOAD_RETIRED.L3_MISS / MEM_LOAD_RETIRED.L3_HIT+M`). | `perf_event_open` PERF_TYPE_RAW    |        no        |
-| **llcocc**| %     | LLC occupancy in bytes / total LLC, via Intel RDT or vendor analogue.   | `/sys/fs/resctrl/mon_groups/…`     |        no        |
-| **cpu**   | %     | CPU utilisation (user + sys, attributed per-PID or system-wide).        | `/proc/<pid>/stat` or `/proc/stat` |       yes        |
+| Metric     | Unit | What it measures                                                       | Stable-ABI backend                 | eBPF-accelerated? |
+| ---------- | ---- | ---------------------------------------------------------------------- | ---------------------------------- | :---------------: |
+| **netp**   | %    | NIC physical utilization (TX + RX bps / link bps).                     | `/sys/class/net/` byte counters    | yes               |
+| **nets**   | %    | Kernel network-stack service time (softirq NET_RX/NET_TX).             | `/proc/softirqs` + `/proc/stat`    | yes               |
+| **blk**    | %    | Block I/O utilization (see semantic models below).                     | `/proc/diskstats` `io_ticks`       | yes               |
+| **mbw**    | %    | Memory bandwidth utilisation (LLC ↔ DRAM, summed across channels).     | uncore IMC / DF / CMN → resctrl    | no                |
+| **llcmr**  | %    | LLC miss ratio (misses / references).                                  | `perf_event_open` HW_CACHE / raw   | yes               |
+| **llcocc** | %    | LLC occupancy / total LLC, via Intel RDT or vendor analogue.           | `/sys/fs/resctrl/mon_groups/…`     | no                |
+| **cpu**    | %    | CPU utilisation (busy share, system / per-PID / per-cgroup).           | `/proc/stat` family or `cpu.stat`  | yes               |
 
-Each metric is normalised to a 0–99 integer percent for the legacy
-TSV output and a fractional double in `[0.0, 1.0]` for the JSON-Lines
-output. Plugins are free to publish in their natural unit; the schema
-descriptor records it.
+Each metric is rendered as integer percent for the legacy TSV output
+and carried as a fractional double in `[0.0, 1.0]` in the C API,
+JSON-Lines, and Prometheus surfaces (ADR-0010). Plugins are free to
+publish in their natural unit; the schema descriptor records it.
 
 ---
 
@@ -74,34 +74,59 @@ metric on the running host. The selection logic is described in
 [ARCHITECTURE.md](ARCHITECTURE.md#backend-registry--runtime-selection);
 the per-metric defaults below assume eBPF is available.
 
-| Metric  | Backend candidates (in priority order)                                                           |
-|---------|--------------------------------------------------------------------------------------------------|
-| netp    | `netlink` → `/sys/class/net/<dev>/statistics/`                                                   |
-| nets    | `ebpf` (softirq tracepoint) → `/proc/stat` softirq counters                                      |
-| blk     | `ebpf` (block tracepoints, queue-depth integration) → `/proc/diskstats` `io_ticks`               |
-| mbw     | `perf_event_open(uncore_imc/cas_count_read+cas_count_write)` → resctrl L3_MBM                    |
-| llcmr   | `perf_event_open(PERF_COUNT_HW_CACHE_LL)` raw `MEM_LOAD_RETIRED.L3_MISS+L3_HIT`                  |
-| llcocc  | `/sys/fs/resctrl/mon_groups/<grp>/mon_data/mon_L3_*/llc_occupancy` (Intel RDT / AMD MBA monitor) |
-| cpu     | `ebpf` (sched_switch tracepoint) → `/proc/<pid>/stat` deltas                                     |
+The shipped chains (backend ids as reported by `--list-backends`):
 
-When the eBPF backend wins, fidelity matches v3 in
-`intp-comparison`. When it loses (eBPF disabled at build time, BTF
-absent, kernel < 5.8, missing capability), the procfs/perf_event/
-resctrl path takes over and matches v2 — at the cost of v2's known
-small fidelity gap on `blk` (`io_ticks` is "≥ 1 pending I/O", not
-"physical queue-depth fraction").
+| Metric | Backend candidates (in priority order)                                  |
+| ------ | ----------------------------------------------------------------------- |
+| netp   | `ebpf_bytes` → `tap` (VM) → `cgroup` (netns) → `sysfs` → `procfs`       |
+| nets   | `ebpf_softirq` → `procfs_softirq` → `procfs_throughput`                 |
+| blk    | `ebpf_svctm` → `cgroup` (io.stat) → `diskstats` (io_ticks) → `sysfs`    |
+| mbw    | `perf_uncore_imc` → `perf_amd_df` → `perf_arm_cmn` → `resctrl_mbm`      |
+| llcmr  | `ebpf_perf` → `cgroup` (perf cgroup mode) → `perf_hwcache` → `perf_raw` |
+| llcocc | `resctrl` → `proxy_from_miss_ratio`                                     |
+| cpu    | `ebpf_sched` → `cgroup` (cpu.stat) → `procfs_pid` → `procfs_system`     |
+
+When an eBPF backend wins, fidelity matches the measured v3.3 endpoint
+in `intp-comparison`. When it loses (eBPF disabled at build time, BTF
+absent, kernel < 5.8, missing capability), the stable-ABI chain takes
+over and matches v2.1.
+
+## Semantic models (ADR-0010)
+
+Two backends of the same metric can measure different latent
+quantities; the selected backend's **model** is declared in
+`--print-schema` and fidelity comparisons are valid only within a
+model family:
+
+- **blk** has three declared models: `svctm_busy_fraction` (canonical
+  — Σ per-request service time / interval, queue-depth aware),
+  `io_ticks_util` (the pure-C fallback — "device had ≥ 1 outstanding
+  I/O", saturates at 100 % on parallel NVMe and can read the same disk
+  activity *opposite* to svctm), and `cgroup_io_throughput` (io.stat
+  bytes over a detected device ceiling). The campaign behind this
+  split is in across-intp `METRICS-ALIGNMENT.md`.
+- **nets** per-cgroup exists only as the eBPF byte-share proxy
+  (`softirq_byteshare_proxy`, status PROXY) — divergent **by design**
+  from the system-wide softirq figure; parity tooling exempts it.
+- **llcocc**'s `proxy_from_miss_ratio` fallback is directional-only
+  (status PROXY), never comparable to occupancy bytes.
+
+Units: the C API/JSONL/Prometheus carry ratios [0,1]; `tsv-legacy-v1`
+renders integer percent (the frozen IADA contract). Canonical formula
+derivations live in across-intp `docs/METRICS-DEEP-DIVE.md` at the
+freeze commit (see [SYNC.md](../SYNC.md)).
 
 ---
 
 ## Cross-vendor portability
 
-| Vendor               | `mbw`                                                                | `llcmr`                            | `llcocc`                                       |
-|----------------------|----------------------------------------------------------------------|------------------------------------|------------------------------------------------|
-| Intel (Skylake+)     | uncore IMC `cas_count_read/write`; resctrl MBM where available       | `MEM_LOAD_RETIRED.L3_*`            | resctrl `llc_occupancy` (CMT)                  |
-| AMD (Rome+)          | uncore `umc_cas_*` events                                            | `MISS_*` family                    | resctrl `llc_occupancy` (AMD L3 monitor)       |
-| AMD (Zen 3+)         | as above; per-CCX bandwidth aggregated                               | as above                           | as above                                        |
-| ARM Neoverse         | PMU `LLC_*` events; vendor uncore varies                              | `LL_CACHE_MISS_RD` / similar       | MPAM (where supported)                          |
-| Other / older        | metric reported as unavailable; not silently zeroed                  | reported as unavailable            | reported as unavailable                         |
+| Vendor           | `mbw`                                                          | `llcmr`                      | `llcocc`                                 |
+| ---------------- | -------------------------------------------------------------- | ---------------------------- | ---------------------------------------- |
+| Intel (Skylake+) | uncore IMC `cas_count_read/write`; resctrl MBM where available | `MEM_LOAD_RETIRED.L3_*`      | resctrl `llc_occupancy` (CMT)            |
+| AMD (Rome+)      | uncore `umc_cas_*` events                                      | `MISS_*` family              | resctrl `llc_occupancy` (AMD L3 monitor) |
+| AMD (Zen 3+)     | as above; per-CCX bandwidth aggregated                         | as above                     | as above                                 |
+| ARM Neoverse     | PMU `LLC_*` events; vendor uncore varies                       | `LL_CACHE_MISS_RD` / similar | MPAM (where supported)                   |
+| Other / older    | metric reported as unavailable; not silently zeroed            | reported as unavailable      | reported as unavailable                  |
 
 `tools/intp-detect.sh` (ported from `intp-comparison/shared/intp-detect.sh`)
 is the single source of truth for hardware capability probing. It

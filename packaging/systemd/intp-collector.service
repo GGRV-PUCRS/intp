@@ -1,0 +1,26 @@
+# Example systemd unit for a long-running intp collector.
+#
+# NOT installed by the packages (decision: deferred to 1.0 with proper
+# hardening review; see docs/PACKAGING.md). Copy to /etc/systemd/system/
+# and adjust the target/format to taste.
+
+[Unit]
+Description=intp interference profiler (Prometheus exposition)
+Documentation=man:intp(1) https://github.com/ggrv-intp/intp
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/intp --serve=prometheus://:9100
+Restart=on-failure
+# intp degrades gracefully without these, but the RDT-backed metrics
+# (mbw, llcocc) and eBPF backends need them:
+# CAP_BPF + CAP_PERFMON for eBPF/perf, CAP_SYS_ADMIN for resctrl.
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_ADMIN
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/sys/fs/resctrl
+
+[Install]
+WantedBy=multi-user.target
