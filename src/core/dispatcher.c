@@ -4,7 +4,7 @@
  * metric reads through the registry, sample buffer management.
  *
  * Cadence ported from intp-comparison:
- *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ e73bc802931e
+ *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (clock_nanosleep TIMER_ABSTIME with timespec_add_sec) so long runs
  * do not drift.
  *
@@ -17,13 +17,13 @@
  * kind INTP_VALUE_NONE — sinks must omit it, never write 0.
  */
 
-#include "core.h"
-
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include "core.h"
 
 static void timespec_add_ms(struct timespec *ts, uint32_t ms)
 {
@@ -35,10 +35,9 @@ static void timespec_add_ms(struct timespec *ts, uint32_t ms)
 	}
 }
 
-int intp_core_buf_append(struct intp_sample_buffer *buf,
-			 const char *name, enum intp_unit unit,
-			 enum intp_value_kind kind, double d,
-			 int64_t i64, uint64_t u64)
+int intp_core_buf_append(struct intp_sample_buffer *buf, const char *name,
+			 enum intp_unit unit, enum intp_value_kind kind,
+			 double d, int64_t i64, uint64_t u64)
 {
 	if (!buf || !name)
 		return -EINVAL;
@@ -48,8 +47,7 @@ int intp_core_buf_append(struct intp_sample_buffer *buf,
 	struct intp_metric_value *slot = NULL;
 
 	for (size_t i = 0; i < buf->len; i++) {
-		if (buf->vals[i].name &&
-		    strcmp(buf->vals[i].name, name) == 0) {
+		if (buf->vals[i].name && strcmp(buf->vals[i].name, name) == 0) {
 			slot = &buf->vals[i];
 			break;
 		}
@@ -126,8 +124,8 @@ int intp_core_sample(struct intp_ctx *ctx, struct intp_sample *out)
 		if (s.status == INTP_CORE_UNAVAILABLE || isnan(s.value)) {
 			intp_core_buf_append(&ctx->buf,
 					     intp_core_metric_names[m],
-					     INTP_UNIT_RATIO,
-					     INTP_VALUE_NONE, 0.0, 0, 0);
+					     INTP_UNIT_RATIO, INTP_VALUE_NONE,
+					     0.0, 0, 0);
 			continue;
 		}
 		intp_core_buf_append(&ctx->buf, intp_core_metric_names[m],

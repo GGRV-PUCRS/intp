@@ -3,7 +3,7 @@
  * cpu_procfs.c — CPU utilization, three backends.
  *
  * Ported from intp-comparison:
- *   variants/v2.1-c-abi-cgroup/src/cpu.c @ e73bc802931e
+ *   variants/v2.1-c-abi-cgroup/src/cpu.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker
  * section.
@@ -20,9 +20,6 @@
  *			probeable; the fallback when no target given.
  */
 
-#include "../../core/core.h"
-#include "../common/procutil.h"
-
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,9 +27,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../../core/core.h"
+#include "../common/procutil.h"
+
 static struct {
 	int valid;
-	unsigned long sum_proc_jiffies;	/* utime+stime summed across PIDs */
+	unsigned long sum_proc_jiffies; /* utime+stime summed across PIDs */
 	unsigned long total_jiffies;
 } pid_state;
 
@@ -53,7 +53,7 @@ static struct {
  */
 static struct {
 	int valid;
-	unsigned long long usage_usec;	/* cumulative cgroup CPU time */
+	unsigned long long usage_usec; /* cumulative cgroup CPU time */
 	long ncpus;
 } cg_state;
 

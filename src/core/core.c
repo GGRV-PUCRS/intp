@@ -4,19 +4,21 @@
  * construction, and the JSON schema dump behind intp_print_schema().
  *
  * Target resolution ported from intp-comparison:
- *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ e73bc802931e
+ *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (cgroup targets resolve their member PIDs from cgroup.procs at open
  * time; PID targets bind directly).
  */
 
 #include "core.h"
-#include "../backends/common/procutil.h"
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "../backends/common/procutil.h"
+#include "detect.h"
 
 /* Backends keep file-scope state (ported design); enforce one ctx per
  * process until the backends are made reentrant (post-1.0). */
@@ -32,8 +34,7 @@ static const char *const metric_descriptions[INTP_CORE_METRICS_COUNT] = {
 	"CPU utilization (busy share of total CPU time)",
 };
 
-static int resolve_target(struct intp_ctx *ctx,
-			  const struct intp_options *opts)
+static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 {
 	struct intp_core_target *t = &ctx->target;
 
@@ -55,8 +56,7 @@ static int resolve_target(struct intp_ctx *ctx,
 			 "%s", opts->target.cgroup_path);
 		t->cgroup_path = ctx->cgroup_path_buf;
 		t->kind = INTP_CORE_TARGET_CONTAINER;
-		t->n_pids = procutil_read_cgroup_procs(t->cgroup_path,
-						       t->pids,
+		t->n_pids = procutil_read_cgroup_procs(t->cgroup_path, t->pids,
 						       INTP_CORE_MAX_PIDS);
 		break;
 	default:
@@ -96,6 +96,10 @@ int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
 		snprintf(ctx->host, sizeof(ctx->host), "unknown");
 
 	intp_core_target_set(&ctx->target);
+
+	/* One detection pass before any backend probes; backends read
+	 * the cached result via detect_cached(). */
+	(void)detect_cached();
 
 	rc = intp_core_registry_build(ctx);
 	if (rc) {
@@ -163,10 +167,13 @@ static void json_escape(FILE *f, const char *s)
 static const char *target_kind_str(const struct intp_ctx *ctx)
 {
 	switch (ctx->opts.target.kind) {
-	case INTP_TARGET_PID:	return "pid";
-	case INTP_TARGET_CGROUP: return "cgroup";
+	case INTP_TARGET_PID:
+		return "pid";
+	case INTP_TARGET_CGROUP:
+		return "cgroup";
 	case INTP_TARGET_SYSTEM:
-	default:		return "system";
+	default:
+		return "system";
 	}
 }
 
@@ -190,7 +197,8 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 	}
 
 	fprintf(f, "{\n");
-	fprintf(f, "  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
+	fprintf(f, "  \"$schema\": "
+		   "\"https://json-schema.org/draft/2020-12/schema\",\n");
 	fprintf(f, "  \"intp_version\": \"%s\",\n", intp_version_string());
 	fprintf(f, "  \"schema_version\": \"%s\",\n", INTP_SCHEMA_VERSION_STR);
 	fprintf(f, "  \"host\": \"");
@@ -220,8 +228,7 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 		fprintf(f, "      \"description\": \"");
 		json_escape(f, metric_descriptions[m]);
 		fprintf(f, "\",\n");
-		fprintf(f, "      \"available\": %s,\n",
-			b ? "true" : "false");
+		fprintf(f, "      \"available\": %s,\n", b ? "true" : "false");
 		if (sel->disabled)
 			fprintf(f, "      \"disabled\": true,\n");
 		if (b) {
@@ -233,7 +240,9 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 		}
 		fprintf(f, "      \"rejected\": [");
 		for (int r = 0; r < sel->n_rejected; r++) {
-			fprintf(f, "%s\n        { \"backend\": \"%s\", \"reason\": \"",
+			fprintf(f,
+				"%s\n        { \"backend\": \"%s\", "
+				"\"reason\": \"",
 				r ? "," : "", sel->rejected[r].backend->id);
 			json_escape(f, sel->rejected[r].reason);
 			fprintf(f, "\" }");

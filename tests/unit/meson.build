@@ -67,3 +67,29 @@ test('core/dispatcher-sampling',
      test_unit_dispatcher,
      suite: 'unit',
 )
+
+test_unit_procutil = executable(
+        'test-unit-procutil',
+        'test_procutil.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('backends/procutil-parsers',
+     test_unit_procutil,
+     suite: 'unit',
+)
+
+test_unit_detect = executable(
+        'test-unit-detect',
+        'test_detect.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('core/detect-invariants',
+     test_unit_detect,
+     suite: 'unit',
+)

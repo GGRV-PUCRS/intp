@@ -7,10 +7,10 @@
  * supports output-sink plugins.
  */
 
-#include "output.h"
-
 #include <stddef.h>
 #include <string.h>
+
+#include "output.h"
 
 extern const struct intp_output_vtable intp_output_jsonl;
 

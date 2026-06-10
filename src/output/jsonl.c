@@ -13,15 +13,15 @@
  * (ADR-0001 honest reporting; ADR-0002 consumer contract).
  */
 
-#include "output.h"
+#include <intp/metrics.h>
+#include <intp/schema.h>
 
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
 
-#include <intp/metrics.h>
-#include <intp/schema.h>
+#include "output.h"
 
 static FILE *g_out;
 
@@ -79,9 +79,9 @@ static int jsonl_emit(struct intp_plugin_ctx *ctx,
 
 	strftime(tsbuf, sizeof(tsbuf), "%Y-%m-%dT%H:%M:%S", &tm);
 
-	fprintf(f, "{\"schema_version\":\"%s\",\"ts\":\"%s.%03ldZ\",\"host\":\"",
-		INTP_SCHEMA_VERSION_STR, tsbuf,
-		sample->ts.tv_nsec / 1000000L);
+	fprintf(f,
+		"{\"schema_version\":\"%s\",\"ts\":\"%s.%03ldZ\",\"host\":\"",
+		INTP_SCHEMA_VERSION_STR, tsbuf, sample->ts.tv_nsec / 1000000L);
 	jsonl_escape(f, sample->host ? sample->host : "");
 	fprintf(f, "\",\"metrics\":{");
 
@@ -91,7 +91,7 @@ static int jsonl_emit(struct intp_plugin_ctx *ctx,
 		const struct intp_metric_value *v = &sample->values[i];
 
 		if (v->kind == INTP_VALUE_NONE)
-			continue;	/* unavailable = omitted */
+			continue; /* unavailable = omitted */
 		fprintf(f, "%s\"", first ? "" : ",");
 		jsonl_escape(f, v->name);
 		fprintf(f, "\":");
