@@ -85,10 +85,23 @@ static void record_rejection(struct intp_core_selection *sel,
 	sel->n_rejected++;
 }
 
+/* Order: priority descending, then chain_order ascending, then id
+ * (last-resort determinism). Section order is deliberately NOT used as
+ * a tie-break — compilers may emit file-scope objects in reverse
+ * definition order. */
+static int backend_before(const struct intp_core_backend *a,
+			  const struct intp_core_backend *b)
+{
+	if (a->priority != b->priority)
+		return a->priority > b->priority;
+	if (a->chain_order != b->chain_order)
+		return a->chain_order < b->chain_order;
+	return strcmp(a->id, b->id) < 0;
+}
+
 /**
  * intp_core_registry_build — collect section entries into per-metric
- * candidate lists, ordered by priority (highest first); registration
- * order breaks ties, which keeps the in-tree fallback chains stable.
+ * candidate lists, deterministically ordered (see backend_before).
  */
 int intp_core_registry_build(struct intp_ctx *ctx)
 {
@@ -102,24 +115,29 @@ int intp_core_registry_build(struct intp_ctx *ctx)
 		sel->active = NULL;
 		sel->disabled = false;
 
-		for (int prio = INTP_PRIORITY_HIGHEST;
-		     prio >= INTP_PRIORITY_LOWEST; prio--) {
-			const struct intp_core_backend *const *it;
+		const struct intp_core_backend *const *it;
 
-			for (it = __start_intp_backends;
-			     it < __stop_intp_backends; it++) {
-				const struct intp_core_backend *b = *it;
+		for (it = __start_intp_backends; it < __stop_intp_backends;
+		     it++) {
+			const struct intp_core_backend *b = *it;
 
-				if (!b || !b->metric || !b->id)
-					continue;
-				if (strcmp(b->metric, sel->metric) != 0)
-					continue;
-				if ((int)b->priority != prio)
-					continue;
-				if (sel->n_candidates >= INTP_CORE_MAX_BACKENDS)
-					return -ENOSPC;
-				sel->candidates[sel->n_candidates++] = b;
+			if (!b || !b->metric || !b->id)
+				continue;
+			if (strcmp(b->metric, sel->metric) != 0)
+				continue;
+			if (sel->n_candidates >= INTP_CORE_MAX_BACKENDS)
+				return -ENOSPC;
+
+			/* Insertion sort by backend_before. */
+			int pos = sel->n_candidates;
+
+			while (pos > 0 &&
+			       backend_before(b, sel->candidates[pos - 1])) {
+				sel->candidates[pos] = sel->candidates[pos - 1];
+				pos--;
 			}
+			sel->candidates[pos] = b;
+			sel->n_candidates++;
 		}
 	}
 	return 0;

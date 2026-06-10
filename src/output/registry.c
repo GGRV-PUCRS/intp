@@ -13,9 +13,13 @@
 #include "output.h"
 
 extern const struct intp_output_vtable intp_output_jsonl;
+extern const struct intp_output_vtable intp_output_tsv_legacy;
+extern const struct intp_output_vtable intp_output_prometheus_fmt;
 
 static const struct intp_output_vtable *const sinks[] = {
 	&intp_output_jsonl,
+	&intp_output_tsv_legacy,
+	&intp_output_prometheus_fmt,
 	NULL,
 };
 

@@ -93,3 +93,16 @@ test('core/detect-invariants',
      test_unit_detect,
      suite: 'unit',
 )
+
+test_unit_tsv_legacy = executable(
+        'test-unit-tsv-legacy',
+        'test_tsv_legacy.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('output/tsv-legacy-golden',
+     test_unit_tsv_legacy,
+     suite: 'unit',
+)

@@ -572,6 +572,7 @@ static const struct intp_core_backend netp_cgroup_backend = {
 	.requires = "requires a PID target in an isolated netns with readable "
 		    "/proc/<pid>/net/dev",
 	.priority = INTP_PRIORITY_LOW,
+	.chain_order = 0,
 	.probe = cgroup_probe,
 	.init = cgroup_init,
 	.read = cgroup_read,
@@ -586,6 +587,7 @@ static const struct intp_core_backend netp_sysfs_backend = {
 	.scope = "system",
 	.requires = "requires readable /sys/class/net",
 	.priority = INTP_PRIORITY_LOW,
+	.chain_order = 1,
 	.probe = sysfs_probe,
 	.init = sysfs_init,
 	.read = sysfs_read,

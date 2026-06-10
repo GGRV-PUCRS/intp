@@ -65,7 +65,9 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 	return 0;
 }
 
-int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
+int intp_core_open_ex(const struct intp_options *opts,
+		      const struct intp_core_extras *extras,
+		      struct intp_ctx **out)
 {
 	static const struct intp_options defaults;
 
@@ -95,6 +97,21 @@ int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
 	if (gethostname(ctx->host, sizeof(ctx->host) - 1) != 0)
 		snprintf(ctx->host, sizeof(ctx->host), "unknown");
 
+	if (extras) {
+		ctx->target.nic_speed_bps_override =
+			extras->nic_speed_bps_override;
+		ctx->target.mem_bw_max_bps_override =
+			extras->mem_bw_max_bps_override;
+		ctx->target.llc_size_bytes_override =
+			extras->llc_size_bytes_override;
+		ctx->target.disk_bw_max_bps_override =
+			extras->disk_bw_max_bps_override;
+		if (extras->iface)
+			ctx->target.iface = extras->iface;
+		if (extras->disk)
+			ctx->target.disk = extras->disk;
+	}
+
 	intp_core_target_set(&ctx->target);
 
 	/* One detection pass before any backend probes; backends read
@@ -107,10 +124,35 @@ int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
 		return rc;
 	}
 
+	if (extras && extras->disabled_metrics) {
+		const char *const *p;
+
+		for (p = extras->disabled_metrics; *p; p++)
+			intp_core_disable_metric(ctx, *p);
+	}
+
 	/* Selection or init binding nothing is not an open() failure:
 	 * the context stays introspectable (--print-schema explains why
 	 * every metric is unavailable); intp_sample() returns -ENODEV. */
 	(void)intp_core_select(ctx);
+
+	/* Operator forcing overrides the selection before init (the
+	 * v2.1 flow: --force-backend falls back to normal selection
+	 * when the forced backend's probe rejects). */
+	if (extras) {
+		for (size_t i = 0; i < extras->n_forces; i++) {
+			const struct intp_core_force *fc = &extras->forces[i];
+
+			if (intp_core_force_backend(ctx, fc->metric,
+						    fc->backend_id) != 0)
+				fprintf(stderr,
+					"intp: --force-backend %s:%s failed "
+					"(probe rejected); keeping the "
+					"selected backend\n",
+					fc->metric, fc->backend_id);
+		}
+	}
+
 	(void)intp_core_init_backends(ctx);
 
 	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
@@ -124,6 +166,11 @@ int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
 	g_open_ctx = ctx;
 	*out = ctx;
 	return 0;
+}
+
+int intp_core_open(const struct intp_options *opts, struct intp_ctx **out)
+{
+	return intp_core_open_ex(opts, NULL, out);
 }
 
 void intp_core_close(struct intp_ctx *ctx)

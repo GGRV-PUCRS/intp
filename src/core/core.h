@@ -101,6 +101,11 @@ struct intp_core_backend {
 	const char *
 		requires; /* human-readable probe requirement */
 	enum intp_priority priority;
+	/* Tie-break within (metric, priority): lower comes first. The
+	 * linker-section order is NOT a reliable tie-break — compilers
+	 * may emit file-scope objects in reverse definition order — so
+	 * same-priority chains must set this explicitly. */
+	int chain_order;
 	int (*probe)(void);
 	int (*init)(void);
 	int (*read)(struct intp_core_sample *out, double interval_sec);
@@ -187,6 +192,32 @@ int intp_core_open(const struct intp_options *opts, struct intp_ctx **out);
 void intp_core_close(struct intp_ctx *ctx);
 int intp_core_sample(struct intp_ctx *ctx, struct intp_sample *out);
 int intp_core_print_schema(struct intp_ctx *ctx, int fd);
+
+/* Extended open used by the CLI (static link): carries the operator
+ * knobs that are not yet part of the public ABI — backend forcing,
+ * metric disables, and the hardware-normalizer overrides. The public
+ * intp_options grows these fields in the planned pre-1.0 ABI
+ * extension; until then this internal struct is the only carrier. */
+struct intp_core_force {
+	const char *metric;
+	const char *backend_id;
+};
+
+struct intp_core_extras {
+	const struct intp_core_force *forces;
+	size_t n_forces;
+	const char *const *disabled_metrics; /* NULL-terminated */
+	long nic_speed_bps_override;	     /* 0 = use detection */
+	long mem_bw_max_bps_override;
+	long llc_size_bytes_override;
+	long disk_bw_max_bps_override;
+	const char *iface; /* NULL = autodetect */
+	const char *disk;
+};
+
+int intp_core_open_ex(const struct intp_options *opts,
+		      const struct intp_core_extras *extras,
+		      struct intp_ctx **out);
 
 /* Registry helpers (also used by the unit tests). */
 int intp_core_registry_build(struct intp_ctx *ctx);
