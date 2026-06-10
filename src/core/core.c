@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "../backends/common/procutil.h"
+#include "../plugins/portable-metrics/portable.h"
 #include "detect.h"
 
 /* Backends keep file-scope state (ported design); enforce one ctx per
@@ -32,6 +33,20 @@ static const char *const metric_descriptions[INTP_CORE_METRICS_COUNT] = {
 	"last-level cache miss ratio (misses / references)",
 	"last-level cache occupancy (share of LLC capacity)",
 	"CPU utilization (busy share of total CPU time)",
+};
+
+/* One-liners for the system.portable.* set, canonical provider order
+ * (schedlat psi_mem membw_est psi_io schedthr steal psp idle_preempt;
+ * ADR-0009). */
+static const char *const portable_descriptions[INTP_CORE_PORTABLE_COUNT] = {
+	"run-queue/scheduling latency (schedstat run-delay or PSI cpu)",
+	"memory-capacity pressure (PSI memory.pressure 'some')",
+	"DRAM bandwidth estimate (LLC misses x 64B cacheline / interval)",
+	"block I/O pressure (PSI io.pressure 'some')",
+	"CFS bandwidth throttling (cpu.stat throttled_usec, cgroup-only)",
+	"hypervisor-stolen vCPU time (/proc/stat field 8, VM-global)",
+	"involuntary preemption rate (nonvoluntary_ctxt_switches)",
+	"idle-CPU takeover rate (eBPF-only; unavailable on this provider)",
 };
 
 static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
@@ -59,6 +74,26 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 		t->n_pids = procutil_read_cgroup_procs(t->cgroup_path, t->pids,
 						       INTP_CORE_MAX_PIDS);
 		break;
+	case INTP_TARGET_VM:
+		/* VM netp comes from the host-side tap iface; the other
+		 * six metrics are scoped by the VM's qemu-scope cgroup
+		 * when cgroup_path is set in the union alongside (ported
+		 * v2.1 --target-vm semantics). */
+		if (!opts->target.tap_iface || !opts->target.tap_iface[0])
+			return -EINVAL;
+		t->tap_iface = opts->target.tap_iface;
+		t->kind = INTP_CORE_TARGET_VM;
+		if (opts->target.cgroup_path) {
+			snprintf(ctx->cgroup_path_buf,
+				 sizeof(ctx->cgroup_path_buf), "%s",
+				 opts->target.cgroup_path);
+			t->cgroup_path = ctx->cgroup_path_buf;
+			t->n_pids =
+				procutil_read_cgroup_procs(t->cgroup_path,
+							   t->pids,
+							   INTP_CORE_MAX_PIDS);
+		}
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -77,6 +112,13 @@ int intp_core_open_ex(const struct intp_options *opts,
 		return -EBUSY;
 	if (!opts)
 		opts = &defaults;
+
+	/* Experimental fence (ADR-0008): the library enforces the gate
+	 * even when the CLI's friendly message was bypassed. */
+	if (opts->target.kind == INTP_TARGET_VM && !opts->experimental)
+		return -EPERM;
+	if (extras && extras->portable_metrics && !opts->experimental)
+		return -EPERM;
 
 	struct intp_ctx *ctx = calloc(1, sizeof(*ctx));
 
@@ -110,6 +152,20 @@ int intp_core_open_ex(const struct intp_options *opts,
 			ctx->target.iface = extras->iface;
 		if (extras->disk)
 			ctx->target.disk = extras->disk;
+		ctx->target.exact = extras->exact;
+		/* Multi-PID targets (--pids/--comm) OVERRIDE the single
+		 * -p pid from the public options. */
+		if (extras->pids && extras->n_pids > 0) {
+			int n = extras->n_pids;
+
+			if (n > INTP_CORE_MAX_PIDS)
+				n = INTP_CORE_MAX_PIDS;
+			for (int i = 0; i < n; i++)
+				ctx->target.pids[i] = extras->pids[i];
+			ctx->target.n_pids = n;
+		}
+		ctx->portable_enabled =
+			ctx->opts.experimental && extras->portable_metrics;
 	}
 
 	intp_core_target_set(&ctx->target);
@@ -155,6 +211,12 @@ int intp_core_open_ex(const struct intp_options *opts,
 
 	(void)intp_core_init_backends(ctx);
 
+	/* Portable-metrics provider (ADR-0009): probe + init its own
+	 * fallback chains after the core backends, only when enabled.
+	 * Metrics that bind nothing read as unavailable, never zero. */
+	if (ctx->portable_enabled)
+		(void)intp_portable_select_and_init();
+
 	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
 		ctx->schema[m].name = intp_core_metric_names[m];
 		ctx->schema[m].unit = INTP_UNIT_RATIO;
@@ -162,6 +224,18 @@ int intp_core_open_ex(const struct intp_options *opts,
 		ctx->schema[m].always_present = ctx->sel[m].active != NULL;
 	}
 	ctx->schema_len = INTP_CORE_METRICS_COUNT;
+
+	if (ctx->portable_enabled) {
+		for (size_t i = 0; i < intp_portable_count(); i++) {
+			struct intp_metric_schema *s =
+				&ctx->schema[ctx->schema_len++];
+
+			s->name = intp_portable_name(i);
+			s->unit = intp_portable_unit(i);
+			s->description = portable_descriptions[i];
+			s->always_present = false;
+		}
+	}
 
 	g_open_ctx = ctx;
 	*out = ctx;
@@ -177,6 +251,8 @@ void intp_core_close(struct intp_ctx *ctx)
 {
 	if (!ctx)
 		return;
+	if (ctx->portable_enabled)
+		intp_portable_cleanup();
 	intp_core_cleanup_backends(ctx);
 	free(ctx->buf.vals);
 	if (g_open_ctx == ctx)
@@ -218,6 +294,8 @@ static const char *target_kind_str(const struct intp_ctx *ctx)
 		return "pid";
 	case INTP_TARGET_CGROUP:
 		return "cgroup";
+	case INTP_TARGET_VM:
+		return "vm";
 	case INTP_TARGET_SYSTEM:
 	default:
 		return "system";
@@ -272,6 +350,10 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 		fprintf(f, "    \"%s\": {\n", sel->full_name);
 		fprintf(f, "      \"unit\": \"%s\",\n",
 			intp_unit_name(INTP_UNIT_RATIO));
+		/* Stability per ADR-0008, sourced internally: the seven
+		 * core metrics are stable; system.portable.* below is
+		 * experimental until its validation campaign passes. */
+		fprintf(f, "      \"stability\": \"stable\",\n");
 		fprintf(f, "      \"description\": \"");
 		json_escape(f, metric_descriptions[m]);
 		fprintf(f, "\",\n");
@@ -296,7 +378,30 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 		}
 		fprintf(f, "%s]\n", sel->n_rejected ? "\n      " : "");
 		fprintf(f, "    }%s\n",
-			(m + 1 < INTP_CORE_METRICS_COUNT) ? "," : "");
+			(m + 1 < INTP_CORE_METRICS_COUNT ||
+			 ctx->portable_enabled)
+				? ","
+				: "");
+	}
+
+	/* system.portable.* (ADR-0009): present only when the provider
+	 * is enabled; every entry is marked experimental (ADR-0008). */
+	if (ctx->portable_enabled) {
+		size_t n = intp_portable_count();
+
+		for (size_t i = 0; i < n; i++) {
+			const struct intp_metric_schema *s =
+				&ctx->schema[INTP_CORE_METRICS_COUNT + i];
+
+			fprintf(f, "    \"%s\": {\n", s->name);
+			fprintf(f, "      \"unit\": \"%s\",\n",
+				intp_unit_name(s->unit));
+			fprintf(f, "      \"stability\": \"experimental\",\n");
+			fprintf(f, "      \"description\": \"");
+			json_escape(f, s->description);
+			fprintf(f, "\"\n");
+			fprintf(f, "    }%s\n", (i + 1 < n) ? "," : "");
+		}
 	}
 
 	fprintf(f, "  }\n");

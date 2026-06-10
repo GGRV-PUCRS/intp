@@ -34,14 +34,15 @@
 #ifndef INTP_INTP_H
 #define INTP_INTP_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <sys/types.h>
-
 #include <intp/metrics.h>
 #include <intp/schema.h>
 #include <intp/version.h>
+
+#include <sys/types.h>
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,20 +69,32 @@ const char *intp_version_string(void);
  *
  * INTP_TARGET_SYSTEM	 - the whole host (no PID/cgroup attachment).
  * INTP_TARGET_PID	 - a single process. Use intp_target_set_pid().
- * INTP_TARGET_CGROUP	 - a cgroup-v2 path (post-1.0).
+ * INTP_TARGET_CGROUP	 - a cgroup-v2 path.
+ * INTP_TARGET_VM	 - a KVM/QEMU virtual machine. EXPERIMENTAL
+ *			   (ADR-0008): requires opts.experimental;
+ *			   intp_open() returns -EPERM otherwise. Set
+ *			   tap_iface to the host-side tap/vnet interface
+ *			   (drives netp); optionally set cgroup_path in
+ *			   the union to the VM's qemu scope so the other
+ *			   six metrics attribute to the VM's cgroup.
  */
 enum intp_target_kind {
 	INTP_TARGET_SYSTEM = 0,
 	INTP_TARGET_PID,
 	INTP_TARGET_CGROUP,
+	INTP_TARGET_VM,
 };
 
 struct intp_target {
 	enum intp_target_kind kind;
 	union {
-		pid_t       pid;
+		pid_t pid;
 		const char *cgroup_path;
 	};
+	/** Host-side tap/vnet interface for INTP_TARGET_VM netp; used
+	 *  together with cgroup_path (in the union above) for the other
+	 *  six metrics. NULL for non-VM targets. Layout-append-only. */
+	const char *tap_iface;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -112,6 +125,13 @@ struct intp_options {
 
 	/** Verbosity: 0 = silent, 1 = warnings, 2 = info, 3 = debug. */
 	int log_level;
+
+	/** Opt in to experimental features (ADR-0008). Experimental
+	 *  surfaces (INTP_TARGET_VM, the system.portable.* metric set)
+	 *  are pending their validation campaign; intp_open() returns
+	 *  -EPERM when one is requested without this flag. Defaults to
+	 *  false. Layout-append-only. */
+	bool experimental;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -177,9 +197,7 @@ typedef int (*intp_sample_callback)(const struct intp_sample *sample,
  * Returns 0 if the callback asked to stop cleanly, negative errno on
  * failure.
  */
-int intp_subscribe(struct intp_ctx *ctx,
-		   intp_sample_callback cb,
-		   void *user);
+int intp_subscribe(struct intp_ctx *ctx, intp_sample_callback cb, void *user);
 
 /* ------------------------------------------------------------------------ */
 /* Schema introspection                                                      */
@@ -218,10 +236,10 @@ const char *intp_strerror(int err);
  */
 enum intp_probe_result {
 	INTP_PROBE_OK = 0,
-	INTP_PROBE_UNSUPPORTED,		/* feature not built into libintp */
-	INTP_PROBE_KERNEL_TOO_OLD,	/* kernel lacks the required surface */
-	INTP_PROBE_NOT_PERMITTED,	/* CAP_BPF / CAP_PERFMON / equivalent missing */
-	INTP_PROBE_ERROR,		/* probe itself failed; check errno */
+	INTP_PROBE_UNSUPPORTED,	   /* feature not built into libintp */
+	INTP_PROBE_KERNEL_TOO_OLD, /* kernel lacks the required surface */
+	INTP_PROBE_NOT_PERMITTED, /* CAP_BPF / CAP_PERFMON / equivalent missing */
+	INTP_PROBE_ERROR,	  /* probe itself failed; check errno */
 };
 
 /**

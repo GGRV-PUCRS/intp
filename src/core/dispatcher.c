@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "../plugins/portable-metrics/portable.h"
 #include "core.h"
 
 static void timespec_add_ms(struct timespec *ts, uint32_t ms)
@@ -131,6 +132,38 @@ int intp_core_sample(struct intp_ctx *ctx, struct intp_sample *out)
 		intp_core_buf_append(&ctx->buf, intp_core_metric_names[m],
 				     INTP_UNIT_RATIO, INTP_VALUE_DOUBLE,
 				     s.value / 100.0, 0, 0);
+	}
+
+	/* system.portable.* (ADR-0009), appended AFTER the seven core
+	 * metrics so tsv-legacy-v1's by-name rendering of the frozen
+	 * columns is unaffected. Providers report the upstream scale;
+	 * convert here: percent → ratio (/100), membw_est MB/s →
+	 * bytes/s (×1e6), psp/idle_preempt events/s pass through. */
+	if (ctx->portable_enabled) {
+		for (size_t i = 0; i < intp_portable_count(); i++) {
+			struct intp_core_sample s;
+			enum intp_unit unit = intp_portable_unit(i);
+			const char *name = intp_portable_name(i);
+
+			intp_portable_read(i, &s, interval_sec);
+
+			if (s.status == INTP_CORE_UNAVAILABLE ||
+			    isnan(s.value)) {
+				intp_core_buf_append(&ctx->buf, name, unit,
+						     INTP_VALUE_NONE, 0.0, 0,
+						     0);
+				continue;
+			}
+
+			double v = s.value;
+
+			if (unit == INTP_UNIT_RATIO)
+				v /= 100.0;
+			else if (unit == INTP_UNIT_BYTES_PER_SECOND)
+				v *= 1e6;
+			intp_core_buf_append(&ctx->buf, name, unit,
+					     INTP_VALUE_DOUBLE, v, 0, 0);
+		}
 	}
 
 	clock_gettime(CLOCK_REALTIME, &ctx->sample.ts);

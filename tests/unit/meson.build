@@ -106,3 +106,29 @@ test('output/tsv-legacy-golden',
      test_unit_tsv_legacy,
      suite: 'unit',
 )
+
+test_unit_target = executable(
+        'test-unit-target',
+        'test_target.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('core/target-parsing',
+     test_unit_target,
+     suite: 'unit',
+)
+
+test_unit_portable = executable(
+        'test-unit-portable',
+        'test_portable.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('plugins/portable-provider',
+     test_unit_portable,
+     suite: 'unit',
+)

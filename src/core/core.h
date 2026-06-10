@@ -40,6 +40,10 @@
 #define INTP_CORE_MAX_PIDS     256
 #define INTP_CORE_MAX_BACKENDS 8 /* per metric, after sort */
 
+/* Size of the portable-metrics provider set (ADR-0009). Must equal
+ * intp_portable_count(); checked with a static assert in portable.c. */
+#define INTP_CORE_PORTABLE_COUNT 8
+
 /* ------------------------------------------------------------------------ */
 /* Target binding (singleton, ported v2.1 intp_target_t)                     */
 /* ------------------------------------------------------------------------ */
@@ -58,6 +62,7 @@ struct intp_core_target {
 	const char *iface;	 /* may be NULL = autodetect */
 	const char *disk;	 /* may be NULL = autodetect */
 	const char *tap_iface;	 /* VM netp: host tap iface, or NULL */
+	int exact;		 /* leaf-only cgroup gating (--exact) */
 	enum intp_core_target_kind kind;
 	long nic_speed_bps_override;   /* 0 = use detection */
 	long mem_bw_max_bps_override;  /* 0 = use detection */
@@ -180,7 +185,12 @@ struct intp_ctx {
 	struct timespec next_deadline; /* CLOCK_MONOTONIC */
 	bool deadline_armed;
 
-	struct intp_metric_schema schema[INTP_CORE_METRICS_COUNT];
+	/* The portable-metrics provider is active for this ctx (requires
+	 * opts.experimental AND extras->portable_metrics; ADR-0008/0009). */
+	bool portable_enabled;
+
+	struct intp_metric_schema
+		schema[INTP_CORE_METRICS_COUNT + INTP_CORE_PORTABLE_COUNT];
 	size_t schema_len;
 };
 
@@ -213,6 +223,14 @@ struct intp_core_extras {
 	long disk_bw_max_bps_override;
 	const char *iface; /* NULL = autodetect */
 	const char *disk;
+	int exact;	      /* leaf-only cgroup gating (--exact) */
+	int portable_metrics; /* enable the system.portable.* provider
+			       * (requires opts->experimental; ADR-0009) */
+	/* Multi-PID targets (--pids/--comm): routed around the single-pid
+	 * public option. When given (n_pids > 0) these OVERRIDE the
+	 * single -p pid. */
+	const pid_t *pids;
+	int n_pids;
 };
 
 int intp_core_open_ex(const struct intp_options *opts,
@@ -232,6 +250,13 @@ void intp_core_disable_metric(struct intp_ctx *ctx, const char *metric);
 
 /* Frozen short-name order: netp nets blk mbw llcmr llcocc cpu. */
 extern const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT];
+
+/* Target-spec helpers ported from intp-comparison:
+ *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
+ * (--pids CSV parsing and /proc comm matching; shared with the unit
+ * tests). */
+int intp_parse_pid_list(const char *spec, pid_t *out, int max);
+int intp_find_pids_by_comm(const char *comm, pid_t *out, int max);
 
 /* Sample buffer (real implementations behind the public append API). */
 int intp_core_buf_append(struct intp_sample_buffer *buf, const char *name,

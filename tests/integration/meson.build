@@ -51,3 +51,49 @@ test('cli/degradation-no-resctrl',
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
 )
+
+# Experimental fences (ADR-0008): --target-vm and --portable-metrics
+# refuse to run without --experimental, exit 2, and the refusal names
+# the gate flag on stderr.
+test('cli/target-vm-fenced-without-experimental',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        ERR=$($BIN --target-vm tap0 2>&1 >/dev/null)
+        RC=$?
+        [ $RC -eq 2 ] || exit 1
+        echo "$ERR" | grep -q ..experimental || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+)
+
+test('cli/portable-metrics-fenced-without-experimental',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        ERR=$($BIN --portable-metrics 2>&1 >/dev/null)
+        RC=$?
+        [ $RC -eq 2 ] || exit 1
+        echo "$ERR" | grep -q ..experimental || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+)
+
+# Contract guard (ADR-0008 no-contamination): with the portable set
+# enabled, tsv-legacy-v1 still emits EXACTLY the seven frozen columns —
+# the portable values ride only in the namespaced formats.
+test('cli/portable-metrics-keep-tsv-legacy-7-columns',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        OUT=$($BIN --experimental --portable-metrics -i 200ms -d 1 -f tsv-legacy-v1 2>/dev/null)
+        RC=$?
+        [ $RC -eq 0 ] || exit 1
+        [ -n "$OUT" ] || exit 1
+        echo "$OUT" | awk -F"	" "NF != 7 { bad = 1 } END { exit bad }" || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+)

@@ -465,9 +465,9 @@ int intp_ebpf_acquire(void)
 				t->cgroup_path, strerror(errno));
 		} else {
 			st.have_cgroup = 1;
-			/* The CLI --exact flag arrives in a later
-			 * phase; ancestor gate (v3.3 default). */
-			st.cfg.exact_flag = 0;
+			/* --exact selects leaf-only matching; default
+			 * is the ancestor gate (v3.3 default). */
+			st.cfg.exact_flag = t->exact ? 1 : 0;
 		}
 	}
 	st.cfg.system_wide = st.have_cgroup ? 0 : 1;
