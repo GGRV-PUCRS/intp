@@ -139,6 +139,9 @@ intp_include = include_directories('include')
 # Subdirs (libintp, intp CLI, examples, tests)
 # ---------------------------------------------------------------------------
 
+subdir('src/core')
+subdir('src/backends')
+subdir('src/output')
 subdir('src/lib')
 subdir('src/cli')
 subdir('src/plugins/bpftrace')

@@ -2,22 +2,29 @@
 /*
  * intp(1) — Linux interference profiler CLI.
  *
- * Stage 1.5 scaffold: this main.c handles --version, --help, and a
- * static --print-schema. The real argument parsing, libintp wiring,
- * and output-sink dispatch land in Stage 2 of the roadmap, when the
- * backend implementations are ready to back them.
+ * A thin wrapper over libintp; everything the binary can do, a linked
+ * program can also do via <intp/intp.h>. Sampling flow:
  *
- * The CLI is intentionally a thin wrapper over libintp; everything
- * the binary can do, a linked program can also do via <intp/intp.h>.
+ *   parse args → intp_open (backend probe + selection) →
+ *   sink->open → intp_sample loop → sink->close → intp_close
+ *
+ * On SIGINT/SIGTERM the sampling loop exits cleanly and backend
+ * cleanup releases any held resources (perf fds, resctrl mon_groups).
  */
 
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <intp/intp.h>
+
+#include "../output/output.h"
 
 static const char usage_text[] =
 "Usage: intp [OPTIONS]\n"
@@ -97,28 +104,27 @@ static void print_help(void)
 	fputs(usage_text, stdout);
 }
 
-static void print_schema_static(void)
+static volatile sig_atomic_t g_running = 1;
+
+static void on_signal(int sig)
 {
-	/*
-	 * Stage 1.5: emit a static representation of the *advertised*
-	 * schema. The real intp_print_schema() (which reflects the
-	 * active backend selection on the running host) lands in
-	 * Stage 2.
-	 */
-	printf("{\n");
-	printf("  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
-	printf("  \"intp_version\": \"%s\",\n", intp_version_string());
-	printf("  \"schema_version\": \"0.1.0-dev\",\n");
-	printf("  \"status\": \"stage-1.5-scaffold\",\n");
-	printf("  \"core_metrics\": [\n");
-	for (size_t i = 0; i < INTP_CORE_METRICS_COUNT; i++) {
-		printf("    \"%s\"%s\n",
-		       intp_core_metric_names[i],
-		       (i + 1 < INTP_CORE_METRICS_COUNT) ? "," : "");
-	}
-	printf("  ],\n");
-	printf("  \"note\": \"Real schema reflecting active backends lands in Stage 2.\"\n");
-	printf("}\n");
+	(void)sig;
+	g_running = 0;
+}
+
+/* Parse "1", "1.5", "2s", "100ms" into milliseconds; <0 on error. */
+static long parse_duration_ms(const char *s)
+{
+	char *end;
+	double v = strtod(s, &end);
+
+	if (end == s || v < 0)
+		return -1;
+	if (*end == '\0' || strcmp(end, "s") == 0)
+		return (long)(v * 1000.0);
+	if (strcmp(end, "ms") == 0)
+		return (long)v;
+	return -1;
 }
 
 enum {
@@ -233,8 +239,98 @@ static int run_serve(const char *arg)
 	return 0;
 }
 
+#define MAX_DISABLED 32
+
+static int run_sampling(const struct intp_options *opts, const char *format,
+			long duration_ms, bool print_schema_only)
+{
+	struct intp_ctx *ctx = NULL;
+	int rc = intp_open(opts, &ctx);
+
+	if (rc) {
+		fprintf(stderr, "intp: open failed: %s\n", intp_strerror(rc));
+		return 1;
+	}
+
+	if (print_schema_only) {
+		rc = intp_print_schema(ctx, STDOUT_FILENO);
+		intp_close(ctx);
+		return rc ? 1 : 0;
+	}
+
+	const struct intp_output_vtable *sink = intp_output_find(format);
+
+	if (!sink) {
+		fprintf(stderr, "intp: unknown or not-yet-built format '%s'."
+			" Available:", format);
+		const struct intp_output_vtable *const *it =
+			intp_output_list();
+		for (; *it; it++)
+			fprintf(stderr, " %s", (*it)->format_name);
+		fprintf(stderr, "\n");
+		intp_close(ctx);
+		return 2;
+	}
+
+	if (sink->open && sink->open(NULL, STDOUT_FILENO) != 0) {
+		fprintf(stderr, "intp: failed to open output sink\n");
+		intp_close(ctx);
+		return 1;
+	}
+
+	signal(SIGINT, on_signal);
+	signal(SIGTERM, on_signal);
+
+	struct timespec start;
+
+	clock_gettime(CLOCK_MONOTONIC, &start);
+
+	int exit_code = 0;
+
+	while (g_running) {
+		struct intp_sample s;
+
+		rc = intp_sample(ctx, &s);
+		if (rc == -EINTR)
+			break;
+		if (rc) {
+			fprintf(stderr, "intp: sampling failed: %s\n",
+				intp_strerror(rc));
+			exit_code = 1;
+			break;
+		}
+		if (sink->emit)
+			sink->emit(NULL, &s);
+
+		if (duration_ms > 0) {
+			struct timespec now;
+
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			long elapsed_ms =
+				(long)(now.tv_sec - start.tv_sec) * 1000L +
+				(now.tv_nsec - start.tv_nsec) / 1000000L;
+			if (elapsed_ms >= duration_ms)
+				break;
+		}
+	}
+
+	if (sink->close)
+		sink->close(NULL);
+	intp_close(ctx);
+	return exit_code;
+}
+
 int main(int argc, char *argv[])
 {
+	struct intp_options opts = {
+		.target = { .kind = INTP_TARGET_SYSTEM },
+		.interval_ms = 1000,
+	};
+	const char *format = "jsonl";
+	long duration_ms = 0;	/* 0 = run forever */
+	bool do_print_schema = false;
+	const char *disabled_backends[MAX_DISABLED + 1] = { NULL };
+	size_t n_disabled = 0;
 	int opt;
 
 	while ((opt = getopt_long(argc, argv, "p:c:i:d:f:vVh",
@@ -247,27 +343,60 @@ int main(int argc, char *argv[])
 			print_help();
 			return 0;
 		case OPT_PRINT_SCHEMA:
-			print_schema_static();
-			return 0;
+			do_print_schema = true;
+			break;
 		case OPT_PROBE:
 			return run_probe_ebpf();
 		case OPT_SERVE:
 			return run_serve(optarg);
 		case 'p':
+			opts.target.kind = INTP_TARGET_PID;
+			opts.target.pid = (pid_t)atoi(optarg);
+			if (opts.target.pid <= 0) {
+				fprintf(stderr, "intp: bad --pid: %s\n",
+					optarg);
+				return 2;
+			}
+			break;
 		case 'c':
-		case 'i':
+			opts.target.kind = INTP_TARGET_CGROUP;
+			opts.target.cgroup_path = optarg;
+			break;
+		case 'i': {
+			long ms = parse_duration_ms(optarg);
+
+			if (ms <= 0) {
+				fprintf(stderr, "intp: bad --interval: %s\n",
+					optarg);
+				return 2;
+			}
+			opts.interval_ms = (uint32_t)ms;
+			break;
+		}
 		case 'd':
+			duration_ms = parse_duration_ms(optarg);
+			if (duration_ms <= 0) {
+				fprintf(stderr, "intp: bad --duration: %s\n",
+					optarg);
+				return 2;
+			}
+			break;
 		case 'f':
+			format = optarg;
+			break;
 		case 'v':
+			opts.log_level++;
+			break;
+		case OPT_DISABLE_BACKEND:
+			if (n_disabled < MAX_DISABLED)
+				disabled_backends[n_disabled++] = optarg;
+			break;
 		case OPT_PLUGIN_DIR:
 		case OPT_ENABLE_PLUGIN:
 		case OPT_DISABLE_PLUGIN:
-		case OPT_DISABLE_BACKEND:
 			fprintf(stderr,
-				"intp: option not yet implemented in this scaffold build.\n"
-				"      Stage 2 of the roadmap will wire it up.\n"
-				"      Run `intp --version`, `intp --print-schema`, `intp --probe`,\n"
-				"      or `intp --serve` for now.\n");
+				"intp: plugin loading is not wired up yet"
+				" (lands with the plugin loader phase).\n");
 			return 2;
 		default:
 			fprintf(stderr, "Try 'intp --help' for usage.\n");
@@ -275,15 +404,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* No options: print a friendly message instead of just exiting silently. */
-	fprintf(stderr,
-		"intp %s — scaffold build (Stage 1.5).\n"
-		"Real sampling lands in Stage 2; for now try:\n"
-		"    intp --version\n"
-		"    intp --help\n"
-		"    intp --print-schema\n"
-		"    intp --probe\n"
-		"    intp --serve\n",
-		intp_version_string());
-	return 0;
+	if (n_disabled > 0)
+		opts.disabled_backends = disabled_backends;
+
+	return run_sampling(&opts, format, duration_ms, do_print_schema);
 }
