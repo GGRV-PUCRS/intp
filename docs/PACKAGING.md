@@ -49,8 +49,8 @@ allows):
 
 | Artefact                | Contents                                                        |
 |-------------------------|-----------------------------------------------------------------|
-| `intp`                  | The CLI binary and manpage. Depends on `libintp1`.              |
-| `libintp1`              | The shared library `libintp.so.1`. Runtime-linkable.            |
+| `intp`                  | The CLI binary and manpage. Depends on `libintp0`.              |
+| `libintp0`              | The shared library `libintp.so.1`. Runtime-linkable.            |
 | `libintp-dev`           | Public headers, `intp.pc`, static lib (if built).               |
 | `intp-doc`              | The `docs/` tree as installed `share/doc/intp/`.                |
 | `intp-plugin-bpftrace`  | The bpftrace research plugin.                                   |
@@ -79,7 +79,7 @@ packaging/debian/
 ├── rules                  # dh-based, very short
 ├── source/format          # 3.0 (quilt) or (native), TBD
 ├── intp.install
-├── libintp1.install
+├── libintp0.install
 ├── libintp-dev.install
 ├── intp-doc.install
 ├── intp.manpages
@@ -134,6 +134,9 @@ Human-gated: the upload itself is performed by the maintainer, never
 by automation. The release candidate is prepared with:
 
 ```bash
+# one-time: dpkg expects debian/ at the source root
+ln -s packaging/debian debian
+
 # binary build + lintian locally
 dpkg-buildpackage -us -uc
 lintian -EvIL +pedantic ../intp_0.9.0~rc1-1_amd64.changes

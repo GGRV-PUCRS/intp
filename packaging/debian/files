@@ -1,1 +1,9 @@
-intp_0.1.0~placeholder-1_source.buildinfo admin optional
+intp-dbgsym_0.9.0~rc1-1_amd64.ddeb debug optional automatic=yes
+intp-doc_0.9.0~rc1-1_all.deb doc optional
+intp-plugin-bpftrace-dbgsym_0.9.0~rc1-1_amd64.ddeb debug optional automatic=yes
+intp-plugin-bpftrace_0.9.0~rc1-1_amd64.deb admin optional
+intp_0.9.0~rc1-1_amd64.buildinfo admin optional
+intp_0.9.0~rc1-1_amd64.deb admin optional
+libintp-dev_0.9.0~rc1-1_amd64.deb libdevel optional
+libintp0-dbgsym_0.9.0~rc1-1_amd64.ddeb debug optional automatic=yes
+libintp0_0.9.0~rc1-1_amd64.deb libs optional

@@ -33,7 +33,7 @@ intp (0.9.0~rc1-1) noble; urgency=medium
     stamped only after the RDT-testbed validation gate passes
     (tests/regression/run-remote-gate.sh steps 1-6).
 
- -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Tue, 10 Jun 2026 17:00:00 -0300
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Wed, 10 Jun 2026 17:00:00 -0300
 
 intp (0.2.0~placeholder-1) noble; urgency=low
 

@@ -35,7 +35,7 @@ Packaging shape
 The base build produces five binary packages:
 
   intp                     The CLI binary.
-  libintp1                 The shared library.
+  libintp0                 The shared library.
   libintp-dev              Public headers + intp.pc.
   intp-doc                 Architecture-independent doc tree.
   intp-plugin-bpftrace     The bpftrace research plugin.

@@ -99,3 +99,21 @@ Thumbs.db
 *.orig
 *.pre-*.bak
 .claude/settings.local.json
+
+# --- Debian build via the packaging/debian symlink ----------------------------
+# `debian` at the root is a local symlink to packaging/debian (create it
+# with `ln -s packaging/debian debian` before dpkg-buildpackage); dh's
+# working artifacts land through it into packaging/debian/.
+/debian
+packaging/debian/files
+packaging/debian/*.substvars
+packaging/debian/*.debhelper
+packaging/debian/*.debhelper.log
+packaging/debian/.debhelper/
+packaging/debian/debhelper-build-stamp
+packaging/debian/intp/
+packaging/debian/intp-doc/
+packaging/debian/intp-plugin-bpftrace/
+packaging/debian/libintp0/
+packaging/debian/libintp-dev/
+packaging/debian/tmp/
