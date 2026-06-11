@@ -1,0 +1,5 @@
+# bpftrace.so is a dlopen()ed plugin module in a private directory
+# (/usr/lib/<triplet>/intp/plugins/). The packaging-validation stub has
+# no external calls yet, hence no DT_NEEDED entries; the loader resolves
+# it by the intp_plugin_descriptor symbol, not by linkage.
+intp-plugin-bpftrace: shared-library-lacks-prerequisites [usr/lib/*/intp/plugins/bpftrace.so]
