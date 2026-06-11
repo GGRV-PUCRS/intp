@@ -14,6 +14,8 @@ if ebpf_enabled
 endif
 if prometheus_enabled
         libintp_deps += mhd_dep
+        # The serve path runs the sampling loop on a background thread.
+        libintp_deps += dependency('threads')
 endif
 
 # Internal static archive: the whole implementation (public wrappers,

@@ -237,6 +237,12 @@ int intp_core_open_ex(const struct intp_options *opts,
 		      const struct intp_core_extras *extras,
 		      struct intp_ctx **out);
 
+/* Prometheus exposition over an already-opened context (src/lib/
+ * prometheus.c): background sampling thread + /metrics endpoint.
+ * Blocks until SIGINT/SIGTERM; does not close the context. Returns
+ * -ENOSYS when built with -Dwith_prometheus=false. */
+int intp_core_serve_prometheus(struct intp_ctx *ctx, uint16_t port);
+
 /* Registry helpers (also used by the unit tests). */
 int intp_core_registry_build(struct intp_ctx *ctx);
 int intp_core_select(struct intp_ctx *ctx);
