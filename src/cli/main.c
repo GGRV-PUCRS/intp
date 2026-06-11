@@ -330,27 +330,24 @@ static int run_probe_ebpf(void)
 	}
 }
 
-/* Parse `--serve [arg]` argument, where arg is one of:
+/* Parse `--serve [arg]` into a port, where arg is one of:
  *   (empty)                       → prometheus on 9100
  *   "prometheus"                  → prometheus on 9100
  *   "prometheus://[host:]port"    → prometheus on the given port
- *   anything else                 → not yet implemented (returns 2)
- *
- * Host part is currently ignored; libmicrohttpd binds 0.0.0.0. Stage 2
- * will introduce an explicit address-binding option. */
-static int run_serve(const char *arg)
+ * Host part is currently ignored; libmicrohttpd binds 0.0.0.0.
+ * Returns 0 and sets *out_port, or -1 on a malformed/unsupported URI. */
+static int parse_serve_uri(const char *arg, uint16_t *out_port)
 {
 	const char *proto = arg ? arg : "prometheus";
 	uint16_t port = 9100;
 
 	if (strncmp(proto, "prometheus", 10) != 0) {
 		fprintf(stderr,
-			"intp: --serve %s is not yet implemented in this "
-			"build.\n"
+			"intp: --serve %s is not supported.\n"
 			"      Supported: --serve prometheus[://[host:]port] "
 			"(default :9100)\n",
 			proto);
-		return 2;
+		return -1;
 	}
 
 	const char *rest = proto + 10;
@@ -365,26 +362,9 @@ static int run_serve(const char *arg)
 	} else if (*rest != '\0') {
 		fprintf(stderr, "intp: malformed --serve argument: %s\n",
 			proto);
-		return 2;
+		return -1;
 	}
-
-	fprintf(stderr,
-		"intp: serving Prometheus exposition on :%u (Stage 1.5 "
-		"placeholder values).\n"
-		"intp: scrape http://localhost:%u/metrics ; SIGINT to stop.\n",
-		port, port);
-
-	int rc = intp_serve_prometheus(port);
-	if (rc == -ENOSYS) {
-		fprintf(stderr, "intp: --serve prometheus unavailable: built "
-				"with -Dwith_prometheus=false.\n");
-		return 4;
-	}
-	if (rc < 0) {
-		fprintf(stderr, "intp: prometheus server failed: %s\n",
-			strerror(-rc));
-		return 1;
-	}
+	*out_port = port;
 	return 0;
 }
 
@@ -393,7 +373,8 @@ static int run_serve(const char *arg)
 static int run_sampling(const struct intp_options *opts,
 			const struct intp_core_extras *extras,
 			const char *format, long duration_ms,
-			bool print_schema_only, bool list_backends)
+			bool print_schema_only, bool list_backends,
+			bool do_serve, uint16_t serve_port)
 {
 	struct intp_ctx *ctx = NULL;
 	int rc = intp_core_open_ex(opts, extras, &ctx);
@@ -413,6 +394,31 @@ static int run_sampling(const struct intp_options *opts,
 		rc = intp_print_schema(ctx, STDOUT_FILENO);
 		intp_close(ctx);
 		return rc ? 1 : 0;
+	}
+
+	if (do_serve) {
+		fprintf(stderr,
+			"intp: serving Prometheus exposition on :%u (live "
+			"values, %ums cadence).\n"
+			"intp: scrape http://localhost:%u/metrics ; SIGINT "
+			"to stop.\n",
+			serve_port,
+			opts->interval_ms ? opts->interval_ms : 1000,
+			serve_port);
+		rc = intp_core_serve_prometheus(ctx, serve_port);
+		intp_close(ctx);
+		if (rc == -ENOSYS) {
+			fprintf(stderr,
+				"intp: --serve prometheus unavailable: built "
+				"with -Dwith_prometheus=false.\n");
+			return 4;
+		}
+		if (rc < 0) {
+			fprintf(stderr, "intp: prometheus server failed: %s\n",
+				strerror(-rc));
+			return 1;
+		}
+		return 0;
 	}
 
 	const struct intp_output_vtable *sink = intp_output_find(format);
@@ -488,6 +494,8 @@ int main(int argc, char *argv[])
 	long duration_ms = 0; /* 0 = run forever */
 	bool do_print_schema = false;
 	bool do_list_backends = false;
+	bool do_serve = false;
+	uint16_t serve_port = 9100;
 	const char *disabled_backends[MAX_DISABLED + 1] = {NULL};
 	size_t n_disabled = 0;
 	const char *disabled_metrics[MAX_DISABLED + 1] = {NULL};
@@ -515,7 +523,10 @@ int main(int argc, char *argv[])
 		case OPT_PROBE:
 			return run_probe_ebpf();
 		case OPT_SERVE:
-			return run_serve(optarg);
+			if (parse_serve_uri(optarg, &serve_port) != 0)
+				return 2;
+			do_serve = true;
+			break;
 		case 'p':
 			opts.target.kind = INTP_TARGET_PID;
 			opts.target.pid = (pid_t)atoi(optarg);
@@ -694,5 +705,6 @@ int main(int argc, char *argv[])
 	extras.forces = forces;
 
 	return run_sampling(&opts, &extras, format, duration_ms,
-			    do_print_schema, do_list_backends);
+			    do_print_schema, do_list_backends, do_serve,
+			    serve_port);
 }

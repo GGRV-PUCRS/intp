@@ -265,9 +265,14 @@ enum intp_probe_result intp_probe_ebpf(void);
  * Binds 0.0.0.0:port and serves /metrics in the standard Prometheus text
  * format. Blocks until SIGINT/SIGTERM, then returns 0.
  *
- * In the placeholder phase the metric values are zeros and a top-level
- * intp_metrics_implemented gauge advertises 0/7. Stage 2 wires the live
- * sampling loop into the same endpoint with no API change.
+ * A background thread runs the normal sampling loop on a default
+ * system-wide context (1 s cadence); each scrape renders the latest
+ * sample. Unavailable metrics are omitted — never exported as 0 — and
+ * intp_metrics_implemented reports how many of the seven core metrics
+ * carry real values on this host. intp_scrape_staleness_seconds ages
+ * the rendered sample for alerting. Consumers needing targeting or a
+ * different cadence open their own context and drive the CLI's
+ * --serve path instead.
  *
  * Returns 0 on clean shutdown, negative errno on bind/start failure, and
  * -ENOSYS if libintp was built with -Dwith_prometheus=false.

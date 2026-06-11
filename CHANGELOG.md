@@ -69,9 +69,12 @@ from intp-comparison @ `2e87b30fc762` (provenance: [SYNC.md](SYNC.md)).
 - The seven core metrics are carried as **ratios [0,1]**
   (`INTP_UNIT_RATIO`) in the C API/JSONL/Prometheus; `tsv-legacy-v1`
   renders integer percent (ADR-0010).
-- `--serve` keeps its placeholder values until a libmicrohttpd build
-  environment is available; the one-shot `--format prometheus` sink
-  carries live values.
+- `--serve` now exposes live values: a background sampling thread
+  feeds each scrape, unavailable metrics are omitted (never 0),
+  `intp_metrics_implemented` counts the real core metrics, and
+  `intp_scrape_staleness_seconds` ages the sample for alerting. The
+  CLI defers `--serve` until after option parsing, so it honors the
+  full targeting/backend-control surface.
 
 ### Deferred
 
