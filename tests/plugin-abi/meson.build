@@ -24,6 +24,10 @@ if get_option('with_examples')
              test_pabi_descriptor,
              suite: 'plugin-abi',
              args: [meson.project_build_root() / hello_world_so],
+             # The test dlopens the .so by path, invisible to meson's
+             # dependency scanner — declare it so a fresh `meson test`
+             # builds the plugin first.
+             depends: hello_world_plugin,
         )
 else
         message('plugin-abi suite skipped (with_examples=false).')
