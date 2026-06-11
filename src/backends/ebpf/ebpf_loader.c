@@ -159,9 +159,19 @@ static int open_cache_counters(struct bpf_program *prog,
 	/* Match V3: sample_period 1000 so even ~1k LLC events/sec
 	 * trigger at least one BPF invocation per interval. The
 	 * kernel-side increment scales by sample_period so the absolute
-	 * count stays correct. */
+	 * count stays correct.
+	 *
+	 * DELIBERATE DEVIATION from the v3.3 origin (intp_agg.c L275):
+	 * the origin also set wakeup_events = 1, requesting a perf-fd
+	 * wakeup per overflow — but nothing ever consumes that fd (the
+	 * attached BPF program handles every overflow; the counts live
+	 * in BPF maps). On a hybrid client CPU (Core 7 240H) the wakeup
+	 * machinery measured ~6.7k extra context switches/s under a
+	 * cpu-bound load, failing the amplification gate at 6.8x while
+	 * the same attr passed <=1.10 on the Sapphire Rapids testbed.
+	 * Dropping it cannot change metric values: the BPF handler runs
+	 * per overflow regardless, scaled by the period. */
 	attr.sample_period = 1000;
-	attr.wakeup_events = 1;
 	attr.disabled = 0;
 
 	pid_t pid_arg = cgroup_fd >= 0 ? (pid_t)cgroup_fd : -1;
