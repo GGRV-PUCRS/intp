@@ -89,9 +89,12 @@ wait "$sp" 2>/dev/null || true
 sleep 2
 
 echo
-echo "[2/2] with $BIN running"
+echo "[2/2] with $BIN ${INTP_ARGS:-} running"
 sp=$(start_stress)
-"$BIN" --interval 1s --duration "$((DUR + WARMUP + 5))s" \
+# INTP_ARGS lets the bisect harness vary the backend selection
+# (e.g. --disable-backend ebpf_perf) without editing this script.
+# shellcheck disable=SC2086
+"$BIN" ${INTP_ARGS:-} --interval 1s --duration "$((DUR + WARMUP + 5))s" \
        > /tmp/intp-amplification.jsonl 2>/tmp/intp-amplification.log &
 pp=$!
 sleep "$WARMUP"
