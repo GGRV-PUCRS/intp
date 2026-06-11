@@ -24,8 +24,12 @@ target/
 # Skeletons produced by `bpftool gen skeleton` from .bpf.o
 *.skel.h
 *.bpf.o
-# vmlinux.h is normally regenerated from /sys/kernel/btf/vmlinux per build host
+# vmlinux.h is normally regenerated from /sys/kernel/btf/vmlinux per
+# build host — but the checked-in per-arch fallback under
+# src/backends/ebpf/vmlinux/ is LOAD-BEARING for chroot/Launchpad
+# builds (no /sys/kernel/btf there) and must stay tracked.
 vmlinux.h
+!src/backends/ebpf/vmlinux/*/vmlinux.h
 
 # --- Compiled intp binaries (created once Stage 2 of ROADMAP lands) ----------
 /intp
