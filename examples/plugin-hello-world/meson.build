@@ -1,4 +1,4 @@
-shared_module(
+hello_world_plugin = shared_module(
         'intp-plugin-hello-world',
         'hello-world.c',
         include_directories: intp_include,

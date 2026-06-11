@@ -7,6 +7,7 @@ test('cli/version-exits-0',
      find_program('sh'),
      args: ['-c', '@0@ --version | grep -q "^intp "'.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 # `intp --help` exits 0 and describes the tool.
@@ -16,6 +17,7 @@ test('cli/help-exits-0',
             '@0@ --help | grep -q "interference profiler"'.format(
                 meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 # `intp --print-schema` exits 0 and lists the seven core metrics.
@@ -25,6 +27,7 @@ test('cli/print-schema-lists-7-core-metrics',
             '@0@ --print-schema | grep -c "system.interference\\." | grep -qx 7'.format(
                 meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 # Live tests (require root + real kernel) live under live/ and are
@@ -50,6 +53,7 @@ test('cli/degradation-no-resctrl',
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 # Experimental fences (ADR-0008): --target-vm and --portable-metrics
@@ -66,6 +70,7 @@ test('cli/target-vm-fenced-without-experimental',
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 test('cli/portable-metrics-fenced-without-experimental',
@@ -79,6 +84,7 @@ test('cli/portable-metrics-fenced-without-experimental',
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
 
 # Contract guard (ADR-0008 no-contamination): with the portable set
@@ -96,4 +102,5 @@ test('cli/portable-metrics-keep-tsv-legacy-7-columns',
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',
+     depends: intp_exe,
 )
