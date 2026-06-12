@@ -37,6 +37,12 @@
 #
 # Environment:
 #   INTP_REMOTE_SCRATCH   remote scratch dir (default /root/intp-gate)
+#   INTP_REMOTE_NO_PUSH   1 = do NOT rsync; validate an EXISTING checkout
+#                         at ${SCRATCH}/intp that the operator keeps
+#                         current by other means (e.g. git pull on the
+#                         box). Saves the working-tree transfer when the
+#                         remote already tracks the branch under test.
+#                         Set SCRATCH=/root to point at /root/intp.
 #   INTP_ACROSS_DIR       remote across-intp checkout for step 5
 #                         (default /root/across-intp; read-only use)
 #   INTP_SSH_OPTS         extra ssh options (e.g. -i ~/.ssh/id_ed25519)
@@ -58,6 +64,17 @@ log() { printf '\n=== [remote-gate] %s ===\n' "$*"; }
 remote() { ${SSH} "set -euo pipefail; $*"; }
 
 push_tree() {
+	if [ "${INTP_REMOTE_NO_PUSH:-0}" = "1" ]; then
+		log "no-push: validating existing ${TARGET}:${SCRATCH}/intp"
+		remote "test -e ${SCRATCH}/intp/meson.build" || {
+			echo "ERROR: ${SCRATCH}/intp is not an intp checkout" >&2
+			exit 1
+		}
+		remote "cd ${SCRATCH}/intp && \
+			echo 'checkout HEAD:' \$(git rev-parse --short HEAD 2>/dev/null || echo '?') \
+			'clean='\$(test -z \"\$(git status --porcelain 2>/dev/null)\" && echo yes || echo no)"
+		return 0
+	fi
 	log "rsync working tree -> ${TARGET}:${SCRATCH}/intp"
 	rsync -a --delete --exclude=.git --exclude=build --exclude='build-*' \
 		-e "ssh ${INTP_SSH_OPTS:-}" \
