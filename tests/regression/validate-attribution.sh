@@ -54,7 +54,10 @@ NET_METRICS=(netp nets)                        # per-cgroup split validated upst
 
 # Heavy stress-ng config exercises all five separable metrics at once:
 #   --cpu (cpu) --vm (mbw) --cache (llcmr/llcocc) --hdd (blk).
-HEAVY_STRESS="--cpu 2 --vm 1 --vm-bytes 256M --cache 2 --hdd 1 --hdd-bytes 128M"
+# --vm 4 (not 1): one memory worker stays largely cache-resident and
+# leaves mbw below the idle-floor; four workers drive enough sustained
+# DRAM traffic for mbw to clear it and be clearly attributable.
+HEAVY_STRESS="--cpu 2 --vm 4 --vm-bytes 256M --cache 2 --hdd 1 --hdd-bytes 128M"
 
 INTP_BIN=""
 WORKDIR=""
@@ -82,6 +85,15 @@ profile_cgroup() {
     local outfile="$1" cgpath="${2:-}"
     local args=( -f tsv-legacy-v1 -i "${INTERVAL}s" -d "${DURATION}s" )
     [ -n "$cgpath" ] && args+=( -c "$cgpath" )
+    # mbw: force the resctrl mbm backend on EVERY leg (cgroup AND
+    # system-wide). The default system-wide mbw is the uncore IMC PMU,
+    # whose absolute scale differs from resctrl's mbm_total_bytes, so
+    # mixing them makes heavy(resctrl)+idle(resctrl) incomparable to
+    # system(IMC) and the conservation check spuriously fails. resctrl's
+    # root-group totals already include its sub-mon_groups (llcocc
+    # conservation relies on the same), so forcing resctrl puts all
+    # three legs on one scale.
+    args+=( --force-backend mbw:resctrl_mbm )
     timeout "$((DURATION + 10))" "$INTP_BIN" "${args[@]}" \
         > "$outfile" 2>"${outfile}.log" || true
 }
