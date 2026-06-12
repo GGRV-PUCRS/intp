@@ -90,11 +90,11 @@ command -v stress-ng >/dev/null 2>&1 || skip "stress-ng not installed (apt insta
 
 OUTDIR=$(mktemp -d /tmp/intp-xval-XXXXXX)
 WORKLOAD_PID=""
-declare -a ARM_PIDS=()
 
 cleanup() {
-    local p
-    for p in "${ARM_PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done
+    # Arms run in the foreground, so an interrupted arm dies with the
+    # script's process group; only the shared workload needs reaping.
+    # shellcheck disable=SC2317  # body reached via `trap cleanup` below
     if [ -n "$WORKLOAD_PID" ]; then
         kill "$WORKLOAD_PID" 2>/dev/null || true
         wait "$WORKLOAD_PID" 2>/dev/null || true
@@ -142,7 +142,10 @@ fi
 
 # -- Arm launch ----------------------------------------------------------------
 run_arm() {
-    # run_arm <name> <outfile>; backgrounds the arm, appends to ARM_PIDS.
+    # run_arm <name> <outfile>; runs the arm in the FOREGROUND for one
+    # measurement window. Arms must NOT overlap (see the sequential loop
+    # below) -- concurrent per-cgroup resctrl monitors contend for the
+    # cgroup's RMID.
     local name="$1" outfile="$2"
     local args=()
     case "$name" in
@@ -156,7 +159,7 @@ run_arm() {
             for b in "${EBPF_BACKENDS[@]}"; do args+=(--disable-backend "$b"); done
         fi
         timeout "$((DUR + 10))" "$BIN" "${args[@]}" \
-            > "$outfile" 2>"${outfile}.err" &
+            > "$outfile" 2>"${outfile}.err" || true
         ;;
     v2.1|v3.3)
         # The research CLIs share the long normalizer flag names. v3.3 needs
@@ -170,11 +173,10 @@ run_arm() {
         [ "$name" = v3.3 ] && args+=(--no-diag-cols)
         [ -n "$CGROUP" ] && args+=(--cgroup "$CGROUP")
         timeout "$((DUR + 10))" "$vbin" "${args[@]}" \
-            > "$outfile" 2>"${outfile}.err" &
+            > "$outfile" 2>"${outfile}.err" || true
         ;;
     esac
-    ARM_PIDS+=("$!")
-    log "  arm $name started (pid $!) -> $outfile"
+    log "  arm $name captured -> $outfile"
 }
 
 # -- TSV column statistics -------------------------------------------------------
@@ -231,6 +233,12 @@ compare_pair() {
             if [ "$metric" = blk ]; then
                 # Rule (b): svctm vs io_ticks semantic models -- report only.
                 status="REPORT-ONLY (blk model: svctm vs io_ticks)"
+            elif [ "$metric" = netp ] && [ -n "$CGROUP" ]; then
+                # Rule (d): per-cgroup netp via cgroup_skb counts loopback
+                # traffic (documented cgroup_skb=100 artifact), while the
+                # pure-C arms report system-wide NIC netp -- different
+                # quantities under cgroup targeting, so report only.
+                status="REPORT-ONLY (per-cgroup netp cgroup_skb loopback)"
             elif [ "$metric" = nets ] && [ -n "$CGROUP" ]; then
                 # Rule (c): per-cgroup nets byte-share proxy (upstream C2).
                 status="EXEMPT (per-cgroup nets byte-share proxy, C2)"
@@ -263,8 +271,10 @@ compare_pair() {
 # One mixed stress-ng load (origin mix) shared by every arm; with a cgroup
 # target the launcher shell moves ITSELF into the cgroup before exec'ing
 # stress-ng, so every forked worker inherits the target cgroup.
+# Arms run sequentially, so the one shared workload must outlast warmup
+# plus one window PER arm (plus slack for build/launch jitter).
 STRESS_ARGS=(--cpu 2 --vm 1 --vm-bytes 64M --hdd 1 --sock 1
-             --timeout "$((WARMUP + DUR + 15))s" --quiet)
+             --timeout "$((WARMUP + ${#ARMS[@]} * (DUR + 12) + 20))s" --quiet)
 
 log "mode=$MODE arms=[${ARMS[*]}] window=${DUR}s warmup=${WARMUP}s tol=${TOL}pp outdir=$OUTDIR"
 
@@ -285,11 +295,18 @@ fi
 log "warmup ${WARMUP}s before the measurement window"
 sleep "$WARMUP"
 
+# SEQUENTIAL by design: per-cgroup resctrl monitoring reassigns the
+# cgroup's tasks to the profiler's mon_group RMID, and a task can be in
+# only one RMID at a time -- two profilers on the same cgroup contend
+# and the loser reads ~0 (verified on the RDT testbed: v2.1 llcocc
+# collapsed to 0 while intp ran concurrently; both read ~99 alone). So
+# each arm gets the cgroup's RMID exclusively for its own window. The
+# shared workload runs throughout, so every arm sees the same
+# steady-state interference.
 for arm in "${ARMS[@]}"; do
+    log "measuring arm $arm (${DUR}s window, exclusive RMID)"
     run_arm "$arm" "$OUTDIR/$arm.tsv"
 done
-wait "${ARM_PIDS[@]}" 2>/dev/null || true
-ARM_PIDS=()
 
 # -- Validate captures -----------------------------------------------------------
 declare -a LIVE_ARMS=()

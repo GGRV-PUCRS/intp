@@ -152,10 +152,18 @@ step4_smoke() {
 }
 
 step5_parity() {
-	log "step 5: cross-variant parity vs v2.1 / v3.3 (release-blocking)"
+	log "step 5: cross-variant parity vs v2.1 / v3.3 (release-blocking, cgroup mode)"
+	# v3.3 (ebpf-core-cgroup) only counts under a cgroup target -- it
+	# silent-zeros system-wide -- and per-cgroup resctrl monitoring
+	# cannot run concurrently across arms (RMID contention), so xval runs
+	# the arms sequentially against ONE workload cgroup. Set it up here.
 	remote "cd ${SCRATCH}/intp
 		test -d ${ACROSS} || { echo 'across-intp checkout missing'; exit 1; }
-		INTP_XVAL_ACROSS_DIR=${ACROSS} \
+		CG=/sys/fs/cgroup/intp-xval-gate
+		mkdir -p \$CG
+		echo '+cpu +memory +io' > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
+		trap 'rmdir \$CG 2>/dev/null || true' EXIT
+		INTP_XVAL_ACROSS_DIR=${ACROSS} INTP_XVAL_CGROUP=\$CG \
 			tests/regression/xval.sh --cross ./build/src/cli/intp"
 }
 
