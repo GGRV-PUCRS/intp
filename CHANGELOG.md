@@ -17,6 +17,49 @@ in any minor release and will be flagged in the relevant section below.
 
 ---
 
+## [0.9.0] — 2026-06-12
+
+The first release. Stamped after the release-blocking RDT-testbed gate
+(steps 1–6 of `tests/regression/run-remote-gate.sh`) passed in full on
+the Sapphire Rapids validation host (Xeon Gold 5412U, kernel 6.17,
+full CMT/MBM): build + 16/16 default suites, live suite incl. the
+ctxsw-amplification gate at **1.02** (limit 1.10), 7/7-metric smoke +
+RMID crash-reap, cross-variant parity vs the frozen v2.1/v3.3 research
+binaries (3/3 pairs within 15 pp, cgroup-targeted sequential
+methodology), and per-cgroup attribution (15 PASS / 0 FAIL:
+track + isolation + conservation for cpu, blk, llcmr, mbw, llcocc).
+
+### Fixed (since 0.9.0-rc1)
+
+- **Per-cgroup `mbw` now isolates.** Two defects found by the gate
+  against kernel ground truth: (1) the uncore memory-controller PMUs
+  (Intel IMC / AMD DF / ARM CMN) count total socket DRAM traffic and
+  were selected even for cgroup/PID targets, silently reporting the
+  system-wide figure as the target's mbw; they now probe-reject
+  non-system targets so resctrl mbm (per-RMID) wins. (2) mbw and
+  llcocc each created their own resctrl mon_group and contended for
+  the target's single RMID (the loser read 0); they now share one
+  refcounted per-target group. On a non-RDT host, per-cgroup mbw is
+  honestly unavailable rather than silently system-wide.
+- `--serve` exposes live values (sampling thread + honest omission +
+  `intp_scrape_staleness_seconds`) and honors the full targeting
+  surface; libmicrohttpd is in the default build.
+- eBPF llcmr perf attr drops `wakeup_events=1` (documented deviation
+  from the frozen origin): nothing consumes the perf fd, and the
+  per-overflow wakeups added ~6.7k ctxsw/s on hybrid client CPUs
+  (amplification 6.8× → 1.06× on a Core 7 240H; upstream D11).
+- Test/gate robustness: unit selection tests are deterministic under
+  root+eBPF; the eBPF leak check counts intp's own programs and waits
+  out asynchronous BPF teardown; cross-variant parity runs
+  cgroup-targeted and sequential (per-cgroup resctrl monitors cannot
+  run concurrently — RMID contention); attribution compares mbw on a
+  single backend scale; the gate preserves its exit code through the
+  cleanup trap; the checked-in `vmlinux.h` BTF fallback is actually
+  tracked (a bare `.gitignore` rule had swallowed it — Launchpad
+  builds would have FTBFS'd).
+
+---
+
 ## [0.9.0-rc1] — 2026-06-10
 
 Stage 2 of the roadmap: the working profiler. Engines ported-and-frozen

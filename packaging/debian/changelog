@@ -1,3 +1,31 @@
+intp (0.9.0-1) noble; urgency=medium
+
+  * First release: the 0.9.0~rc1 candidate promoted after the
+    release-blocking RDT-testbed validation gate passed in full
+    (Sapphire Rapids, kernel 6.17, full CMT/MBM): build + default test
+    suites, eBPF live suite incl. the ctxsw-amplification gate at 1.02
+    (limit 1.10), 7/7-metric smoke + RMID crash-reap, cross-variant
+    parity vs the frozen v2.1/v3.3 research binaries, and per-cgroup
+    attribution (track/isolation/conservation for cpu blk llcmr mbw
+    llcocc).
+  * Per-cgroup mbw now isolates: the uncore memory-controller PMUs
+    (system-total by design) no longer serve cgroup/PID targets —
+    resctrl mbm does, through a single shared per-target monitoring
+    group (mbw + llcocc no longer contend for the target's RMID).
+  * --serve exposes live values (sampling thread, honest omission of
+    unavailable metrics, scrape staleness gauge) and honors the full
+    targeting surface; built with libmicrohttpd by default.
+  * eBPF llcmr sampling no longer requests per-overflow perf wakeups
+    (~6.7k ctxsw/s saved on hybrid client CPUs; documented deviation
+    from the research origin).
+  * Test and packaging robustness: deterministic unit selection under
+    root+eBPF, intp-scoped BPF leak checks, the checked-in vmlinux.h
+    BTF fallback is properly tracked (chroot/PPA builds no longer
+    depend on host BTF), source-package build flow via
+    packaging/make-source-package.sh.
+
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Fri, 12 Jun 2026 17:30:00 -0300
+
 intp (0.9.0~rc1-1) noble; urgency=medium
 
   * Stage 2 complete: the working profiler replaces the scaffold stubs.

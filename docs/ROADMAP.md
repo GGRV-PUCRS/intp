@@ -102,9 +102,10 @@ matching the dissertation's evaluated configuration.
 
 ## Stage 3 — Debian packaging
 
-> **Status: in progress** — packaging templates are complete; the
-> lintian-clean local build and the v0.9.0 candidate stamp close this
-> stage once the remote gate passes.
+> **Status: complete (v0.9.0, 2026-06-12)** — lintian-clean binary
+> and source packages, install/remove smoke-tested; the remote
+> RDT-testbed gate (steps 1–6) passed in full and the release is
+> tagged. Stage 4 (PPA upload) is the next action.
 
 **Gate:** Stage 2 produced a tagged release (`v1.0.0` or later) that
 builds reproducibly from a clean checkout on a vanilla Debian sid
