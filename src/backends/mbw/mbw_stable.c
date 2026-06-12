@@ -32,9 +32,6 @@
 #include "../common/perfev.h"
 #include "../common/resctrl.h"
 
-#define MBW_GROUP_PREFIX      "intp_v2_mbw"
-#define RESCTRL_ROOT_SENTINEL "<root>"
-
 static long resolve_mem_bw_bps(void)
 {
 	const struct intp_core_target *t = intp_core_target_get();
@@ -51,7 +48,6 @@ static struct {
 	char group[64];
 	long prev_bytes;
 	long max_bps;
-	int rescan_n;
 } mb;
 
 static int resctrl_probe(void)
@@ -67,35 +63,25 @@ static int resctrl_probe(void)
 
 static int resctrl_init_(void)
 {
-	/* With explicit --pid: own mon_group scoped to those tasks.
-	 * Without --pid: read the resctrl root group (system-wide) so a
-	 * stress-ng co-runner on neighbouring CPUs is captured. */
+	/* Share the per-target mon_group with the llcocc backend: a
+	 * cgroup/PID target's tasks can be in only one RMID, so a private
+	 * group here would steal them from llcocc (or vice versa). The
+	 * uncore-PMU backends own the system-wide case; for a cgroup/PID
+	 * target the shared group scopes mbm_total_bytes to those tasks. */
 	const struct intp_core_target *t = intp_core_target_get();
 
-	if (t && t->n_pids > 0) {
-		/* Production hygiene: reap groups leaked by a crashed
-		 * run, then respect the 75 % RMID budget — over budget,
-		 * fail init so the registry falls through to the perf
-		 * uncore backends. */
-		resctrl_reap_stale(MBW_GROUP_PREFIX);
-		if (!resctrl_rmid_budget_ok())
-			return -1;
-		snprintf(mb.group, sizeof(mb.group), "%s_%d", MBW_GROUP_PREFIX,
-			 getpid());
-		if (resctrl_create_mongroup(mb.group) != 0)
-			return -1;
-		resctrl_assign_pids(mb.group, t->pids, (size_t)t->n_pids);
-	} else {
-		snprintf(mb.group, sizeof(mb.group), "%s",
-			 RESCTRL_ROOT_SENTINEL);
-		if (resctrl_create_mongroup(mb.group) != 0)
-			return -1;
-	}
+	if (resctrl_target_group_acquire(t ? t->pids : NULL,
+					 t ? (size_t)t->n_pids : 0,
+					 t ? t->cgroup_path : NULL, mb.group,
+					 sizeof(mb.group)) != 0)
+		return -1;
 
 	long b = resctrl_read_mbm_total(mb.group);
 
-	if (b < 0)
+	if (b < 0) {
+		resctrl_target_group_release();
 		return -1;
+	}
 	mb.prev_bytes = b;
 	mb.max_bps = resolve_mem_bw_bps();
 	mb.valid = 1;
@@ -106,11 +92,10 @@ static int resctrl_read_(struct intp_core_sample *out, double interval_sec)
 {
 	if (!mb.valid || interval_sec <= 0)
 		return -1;
-	/* Keep the mon_group current with the cgroup's live members
+	/* Keep the shared mon_group current with the cgroup's live members
 	 * (late-spawned workers, migrations) — cadence-gated, cheap,
-	 * no-op when system-wide. */
-	resctrl_rescan_cgroup(mb.group, intp_core_target_get()->cgroup_path,
-			      mb.rescan_n++);
+	 * no-op when system-wide or PID-scoped. */
+	resctrl_target_group_rescan(intp_core_target_get()->cgroup_path);
 
 	long now = resctrl_read_mbm_total(mb.group);
 
@@ -138,7 +123,7 @@ static int resctrl_read_(struct intp_core_sample *out, double interval_sec)
 static void resctrl_cleanup_(void)
 {
 	if (mb.valid) {
-		resctrl_remove_mongroup(mb.group);
+		resctrl_target_group_release();
 		mb.valid = 0;
 	}
 }
@@ -225,12 +210,33 @@ static void pu_cleanup(void)
 	pu.valid = 0;
 }
 
+/* The uncore memory-controller PMUs (Intel IMC, AMD Data Fabric, ARM
+ * CMN) count TOTAL socket DRAM traffic -- they physically cannot
+ * attribute bandwidth to a cgroup or a PID set. Reject them for any
+ * sub-system target so the resctrl mbm backend (per-RMID, isolatable)
+ * is selected instead. DELIBERATE DEVIATION from the ported v2.1 chain,
+ * which preferred IMC unconditionally and therefore reported the
+ * SYSTEM-WIDE figure as a cgroup's mbw (verified on the RDT testbed: an
+ * idle cgroup read ~58% while the kernel's own per-RMID mon_group read
+ * 0%). v3.3 already used resctrl for per-cgroup mbw; intp now matches
+ * that for cgroup/PID targets while keeping IMC for system-wide (its
+ * most accurate source). On a non-RDT host this correctly leaves
+ * per-cgroup mbw UNAVAILABLE rather than silently system-wide. */
+static int uncore_target_is_system_wide(void)
+{
+	const struct intp_core_target *t = intp_core_target_get();
+
+	return !t || (!t->cgroup_path && t->n_pids == 0);
+}
+
 /* ---- backend 2: Intel uncore IMC --------------------------------------- */
 
 static int imc_probe(void)
 {
 	const system_capabilities_t *c = detect_cached();
 
+	if (!uncore_target_is_system_wide())
+		return -1;
 	if (c->vendor != VENDOR_INTEL)
 		return -1;
 	if (!c->perf_uncore_imc)
@@ -252,6 +258,8 @@ static int amd_df_probe(void)
 {
 	const system_capabilities_t *c = detect_cached();
 
+	if (!uncore_target_is_system_wide())
+		return -1;
 	if (c->vendor != VENDOR_AMD)
 		return -1;
 	if (!c->perf_amd_df)
@@ -272,6 +280,8 @@ static int arm_cmn_probe(void)
 {
 	const system_capabilities_t *c = detect_cached();
 
+	if (!uncore_target_is_system_wide())
+		return -1;
 	if (c->vendor != VENDOR_ARM)
 		return -1;
 	if (!c->perf_arm_cmn)

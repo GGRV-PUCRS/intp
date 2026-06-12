@@ -74,4 +74,29 @@ long resctrl_sum_paths(char paths[][RESCTRL_PATH_MAX], int n_paths);
 int resctrl_rescan_cgroup(const char *name, const char *cgroup_path,
 			  int sample_idx);
 
+/* Shared per-target monitoring group (addition over the v2.1 origin).
+ *
+ * mbm_total_bytes and llc_occupancy both live in ONE mon_group's
+ * mon_data, and a task can be in only one RMID -- so the mbw and llcocc
+ * backends must SHARE a single group per target. Otherwise each assigns
+ * the cgroup/PID tasks to its own group and steals them from the other
+ * (the loser's group ends up empty and reads 0). These calls keep one
+ * refcounted group for the active target: the first backend to acquire
+ * creates and populates it, the second reuses it, and it is removed
+ * when the last releases.
+ *
+ *   acquire()  writes the group name to <out> and returns 0, or -1 if
+ *              over the RMID budget / the group can't be created. With
+ *              no pids and no cgroup it yields the root group (no RMID
+ *              cost). Backends pass their target's pids/cgroup so this
+ *              module stays decoupled from the core target type.
+ *   rescan()   re-syncs a cgroup target's live members on cadence;
+ *              no-op for pid/system targets.
+ *   release()  drops the refcount; removes the group at zero. */
+int resctrl_target_group_acquire(const pid_t *pids, size_t n_pids,
+				 const char *cgroup_path, char *out,
+				 size_t out_sz);
+void resctrl_target_group_rescan(const char *cgroup_path);
+void resctrl_target_group_release(void);
+
 #endif /* INTP_RESCTRL_H */
