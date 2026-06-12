@@ -114,9 +114,10 @@ well-defined stops. The full breakdown lives in
 1. **Public name reservation** — done.
 2. **Variant selection** — done: the SBAC-PAD 2026 comparison selected
    the v2.1 stable-ABI + v3.3 eBPF pairing now living in this tree.
-3. **Debian packaging** — *you are here*: `debian/` directory,
-   manpage, reproducible install tests; release candidate pending the
-   RDT-testbed gate.
+3. **Debian packaging** — done: lintian-clean packages, manpage,
+   install/remove-tested; `v0.9.0` stamped after the RDT-testbed
+   validation gate passed in full.
+   *You are here* → next: the PPA upload.
 4. **Personal PPA on Launchpad** — first public channel for Ubuntu LTS
    (22.04, 24.04, 26.04).
 5. **Debian sponsorship** — *Intent To Package* (ITP),
