@@ -98,6 +98,22 @@ static const struct intp_core_backend fake_lo = {
 INTP_BACKEND_REGISTER(fake_hi);
 INTP_BACKEND_REGISTER(fake_lo);
 
+/* The eBPF backends register at INTP_PRIORITY_HIGH and, on a root + BTF
+ * host, their probe passes and they win selection: ebpf_bytes sorts
+ * before fake_lo on the id tie-break (both HIGH), ebpf_sched outranks
+ * the MEDIUM/LOW procfs cpu chain, and ebpf_softirq gives nets a value.
+ * That would mask the pure-C / fake-backend selection mechanics this
+ * test pins down, so every open disables them. An id that matches no
+ * registered backend (a -Dwith_ebpf=disabled build) is a harmless
+ * no-op; the eBPF backends carry their own coverage in the live suite. */
+#define EBPF_OFF_IDS \
+	"ebpf_bytes", "ebpf_softirq", "ebpf_svctm", "ebpf_sched", "ebpf_perf"
+
+static const char *ebpf_off[] = {EBPF_OFF_IDS, NULL};
+static const struct intp_options OPTS_EBPF_OFF = {
+	.disabled_backends = ebpf_off,
+};
+
 static struct intp_core_selection *find_sel(struct intp_ctx *ctx,
 					    const char *metric)
 {
@@ -118,7 +134,7 @@ int main(void)
 
 	struct intp_ctx *ctx = NULL;
 
-	INTP_EXPECT_EQ(intp_open(NULL, &ctx), 0);
+	INTP_EXPECT_EQ(intp_open(&OPTS_EBPF_OFF, &ctx), 0);
 	INTP_EXPECT_NOT_NULL(ctx);
 
 	struct intp_core_selection *netp = find_sel(ctx, "netp");
@@ -138,6 +154,7 @@ int main(void)
 		const char *all_nets_off[] = {
 			"nets:procfs_softirq",
 			"nets:procfs_throughput",
+			EBPF_OFF_IDS,
 			NULL,
 		};
 		struct intp_options opts_off = {
@@ -153,7 +170,7 @@ int main(void)
 		INTP_EXPECT(nets->active == NULL);
 		INTP_EXPECT(nets->n_rejected >= 2);
 		intp_close(ctx_off);
-		INTP_EXPECT_EQ(intp_open(NULL, &ctx), 0);
+		INTP_EXPECT_EQ(intp_open(&OPTS_EBPF_OFF, &ctx), 0);
 	}
 
 	/* Second concurrent open is refused (singleton target state). */
@@ -165,7 +182,7 @@ int main(void)
 
 	/* --- probe failure falls through to the next candidate --- */
 	fake_hi_probe_rc = -1;
-	INTP_EXPECT_EQ(intp_open(NULL, &ctx), 0);
+	INTP_EXPECT_EQ(intp_open(&OPTS_EBPF_OFF, &ctx), 0);
 	netp = find_sel(ctx, "netp");
 	INTP_EXPECT_NOT_NULL(netp->active);
 	INTP_EXPECT_STREQ(netp->active->id, "fake_lo");
@@ -176,7 +193,7 @@ int main(void)
 	/* --- init failure falls through (probe ok, init fails) --- */
 	fake_hi_probe_rc = 0;
 	fake_hi_init_rc = -1;
-	INTP_EXPECT_EQ(intp_open(NULL, &ctx), 0);
+	INTP_EXPECT_EQ(intp_open(&OPTS_EBPF_OFF, &ctx), 0);
 	netp = find_sel(ctx, "netp");
 	INTP_EXPECT_NOT_NULL(netp->active);
 	INTP_EXPECT_STREQ(netp->active->id, "fake_lo");
@@ -184,7 +201,7 @@ int main(void)
 	fake_hi_init_rc = 0;
 
 	/* --- operator disable skips a backend (bare id form) --- */
-	const char *disabled[] = {"fake_hi", NULL};
+	const char *disabled[] = {"fake_hi", EBPF_OFF_IDS, NULL};
 	struct intp_options opts = {
 		.disabled_backends = disabled,
 	};
@@ -195,7 +212,7 @@ int main(void)
 	intp_close(ctx);
 
 	/* --- metric:id disable form --- */
-	const char *disabled2[] = {"netp:fake_hi", NULL};
+	const char *disabled2[] = {"netp:fake_hi", EBPF_OFF_IDS, NULL};
 	struct intp_options opts2 = {
 		.disabled_backends = disabled2,
 	};

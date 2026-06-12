@@ -79,10 +79,20 @@ int main(void)
 
 	/* --- end-to-end sample through the dispatcher --- */
 	/* nets is disabled so the unavailable->INTP_VALUE_NONE path is
-	 * exercised deterministically on any host. */
+	 * exercised deterministically on any host. The eBPF backends are
+	 * disabled too: on a root + BTF host they probe successfully and
+	 * win selection, which would back nets (ebpf_softirq) and cpu
+	 * (ebpf_sched) and contradict the assertions below. An id that
+	 * matches no registered backend (a -Dwith_ebpf=disabled build) is
+	 * a harmless no-op. */
 	const char *nets_off[] = {
 		"nets:procfs_softirq",
 		"nets:procfs_throughput",
+		"ebpf_bytes",
+		"ebpf_softirq",
+		"ebpf_svctm",
+		"ebpf_sched",
+		"ebpf_perf",
 		NULL,
 	};
 	struct intp_options opts = {
