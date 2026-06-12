@@ -82,11 +82,16 @@ push_tree() {
 }
 
 cleanup_remote() {
+	# Preserve the exit code that triggered the trap: a passing run
+	# must exit 0, not be clobbered by the cleanup ssh (which can
+	# return 255 on a transient connection blip after a long run).
+	local rc=$?
 	log "cleanup: stray workloads + leaked mon_groups"
 	remote "pkill -f 'stress-ng.*intp-gate' 2>/dev/null || true
 		for g in /sys/fs/resctrl/mon_groups/intp_v2_*; do
 			[ -d \"\$g\" ] && rmdir \"\$g\" 2>/dev/null || true
-		done"
+		done" >/dev/null 2>&1 || true
+	exit "$rc"
 }
 trap cleanup_remote EXIT
 
