@@ -42,7 +42,7 @@ option(
     'with_otel',
     type: 'boolean',
     value: false,
-    description: 'Build the OpenTelemetry OTLP output sink. Requires protobuf (and optionally grpc).',
+    description: 'Reserved: the OTLP/HTTP+JSON metrics exporter (libcurl-based) ships as an out-of-tree output-sink plugin (see docs/design/0011-otlp-output-sink.md). No in-tree sink is built yet.',
 )
 
 option(

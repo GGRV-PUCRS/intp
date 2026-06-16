@@ -29,6 +29,9 @@
 #include "../core/detect.h"
 #include "../output/output.h"
 #include "serve_uri.h"
+#if INTP_HAVE_OTEL
+#include "otlp.h"
+#endif
 
 static const char usage_text[] =
 	"Usage: intp [OPTIONS]\n"
@@ -69,7 +72,9 @@ static const char usage_text[] =
 	"\n"
 	"Output:\n"
 	"  -f, --format FORMAT        jsonl (default), tsv-legacy-v1, "
-	"prometheus\n"
+	"prometheus,\n"
+	"                             otlp (OTLP/HTTP+JSON; built with "
+	"-Dwith_otel)\n"
 	"      --print-schema         dump active schema as JSON Schema and "
 	"exit\n"
 	"      --serve[=URI]          long-running exposition mode (Prometheus "
@@ -409,7 +414,13 @@ static int run_sampling(const struct intp_options *opts,
 		return 0;
 	}
 
-	const struct intp_output_vtable *sink = intp_output_find(format);
+	const struct intp_output_vtable *sink = NULL;
+#if INTP_HAVE_OTEL
+	if (strcmp(format, "otlp") == 0)
+		sink = &intp_output_otlp;
+#endif
+	if (!sink)
+		sink = intp_output_find(format);
 
 	if (!sink) {
 		fprintf(stderr,
