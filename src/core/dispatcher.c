@@ -25,6 +25,7 @@
 
 #include "../plugins/portable-metrics/portable.h"
 #include "core.h"
+#include "plugin_loader.h"
 
 static void timespec_add_ms(struct timespec *ts, uint32_t ms)
 {
@@ -165,6 +166,10 @@ int intp_core_sample(struct intp_ctx *ctx, struct intp_sample *out)
 					     INTP_VALUE_DOUBLE, v, 0, 0);
 		}
 	}
+
+	/* Plugin metric-providers append last, under their own namespaces
+	 * (never system.interference.*; enforced at load). */
+	intp_plugin_sample_providers(ctx, &ctx->buf);
 
 	clock_gettime(CLOCK_REALTIME, &ctx->sample.ts);
 	ctx->sample.host = ctx->host;

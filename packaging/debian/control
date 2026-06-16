@@ -7,15 +7,15 @@ Build-Depends:
  meson (>= 0.61),
  ninja-build,
  pkgconf,
- clang,
- bpftool | linux-tools-generic,
- linux-tools-common | bpftool,
+ clang (>= 14),
+ bpftool [linux-any] | linux-tools-generic [linux-any],
  libbpf-dev (>= 0.8),
  libelf-dev,
  zlib1g-dev,
  libmicrohttpd-dev,
  python3,
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
+Testsuite: autopkgtest
 Homepage: https://github.com/ggrv-intp/intp
 Vcs-Git: https://github.com/ggrv-intp/intp.git
 Vcs-Browser: https://github.com/ggrv-intp/intp

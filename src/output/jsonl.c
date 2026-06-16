@@ -21,6 +21,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "../core/core.h"
 #include "output.h"
 
 static FILE *g_out;
@@ -83,7 +84,20 @@ static int jsonl_emit(struct intp_plugin_ctx *ctx,
 		"{\"schema_version\":\"%s\",\"ts\":\"%s.%03ldZ\",\"host\":\"",
 		INTP_SCHEMA_VERSION_STR, tsbuf, sample->ts.tv_nsec / 1000000L);
 	jsonl_escape(f, sample->host ? sample->host : "");
-	fprintf(f, "\",\"metrics\":{");
+	fprintf(f, "\",");
+
+	struct intp_output_target ot;
+
+	intp_core_output_target(&ot);
+	fprintf(f, "\"target\":{\"kind\":\"%s\"", ot.kind);
+	if (ot.pid > 0)
+		fprintf(f, ",\"pid\":%ld", ot.pid);
+	if (ot.cgroup) {
+		fprintf(f, ",\"cgroup\":\"");
+		jsonl_escape(f, ot.cgroup);
+		fprintf(f, "\"");
+	}
+	fprintf(f, "},\"metrics\":{");
 
 	bool first = true;
 

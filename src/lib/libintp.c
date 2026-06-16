@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "../core/core.h"
+#include "../core/plugin_loader.h"
 
 /* INTP_VERSION is already a quoted string literal (Meson injects it
  * via configuration_data.set_quoted), so we return it as-is. */
@@ -159,20 +160,19 @@ intp_sample_append_unavailable(struct intp_sample_buffer *buf, const char *name)
 				    INTP_VALUE_NONE, 0.0, 0, 0);
 }
 
-/* Plugin private-state accessors — real storage lands with the plugin
- * loader (Phase 5); the symbols stay ABI-compatible no-ops until then. */
+/* Plugin private-state accessors — backed by the loader's per-plugin
+ * struct intp_plugin_ctx (src/core/plugin_loader.h). */
 __attribute__((visibility("default"))) void *
 intp_plugin_ctx_get_private(struct intp_plugin_ctx *ctx)
 {
-	(void)ctx;
-	return NULL;
+	return ctx ? ctx->priv : NULL;
 }
 
 __attribute__((visibility("default"))) void
 intp_plugin_ctx_set_private(struct intp_plugin_ctx *ctx, void *priv)
 {
-	(void)ctx;
-	(void)priv;
+	if (ctx)
+		ctx->priv = priv;
 }
 
 /* Schema introspection. */

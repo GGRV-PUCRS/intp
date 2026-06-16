@@ -387,11 +387,16 @@ static int read_per_cgroup_aggregate(__u64 cgid, struct intp_counters *out)
 	return 0;
 }
 
-/* libbpf log filter (ported verbatim): only warnings reach stderr. */
-static int libbpf_quiet(enum libbpf_print_level lvl, const char *fmt,
-			va_list ap)
+/* libbpf log filter: warnings always reach stderr; INFO/DEBUG are gated
+ * on the operator's -v level (intp_core_log_level()), so a quiet default
+ * keeps the ported behaviour while -vv / -vvv surface libbpf detail. */
+static int libbpf_print_cb(enum libbpf_print_level lvl, const char *fmt,
+			   va_list ap)
 {
-	if (lvl == LIBBPF_WARN)
+	int ll = intp_core_log_level();
+
+	if (lvl == LIBBPF_WARN || (lvl == LIBBPF_INFO && ll >= 2) ||
+	    (lvl == LIBBPF_DEBUG && ll >= 3))
 		return vfprintf(stderr, fmt, ap);
 	return 0;
 }
@@ -456,7 +461,7 @@ int intp_ebpf_acquire(void)
 	if (st.failed)
 		return -1; /* cached first failure: fail fast */
 
-	libbpf_set_print(libbpf_quiet);
+	libbpf_set_print(libbpf_print_cb);
 
 	const struct intp_core_target *t = intp_core_target_get();
 
@@ -551,12 +556,14 @@ int intp_ebpf_acquire(void)
 			open_cache_counters(st.skel->progs.perf_llc_refs,
 					    PERF_COUNT_HW_CACHE_RESULT_ACCESS,
 					    &st.perf_refs, n_cpus,
-					    perf_cgroup_fd, 0) == 0;
+					    perf_cgroup_fd,
+				    intp_core_log_level() > 0) == 0;
 		int miss_ok =
 			open_cache_counters(st.skel->progs.perf_llc_misses,
 					    PERF_COUNT_HW_CACHE_RESULT_MISS,
 					    &st.perf_miss, n_cpus,
-					    perf_cgroup_fd, 0) == 0;
+					    perf_cgroup_fd,
+				    intp_core_log_level() > 0) == 0;
 		if (refs_ok && miss_ok) {
 			st.attached |= INTP_EBPF_LLC;
 		} else {
