@@ -148,6 +148,21 @@ test('cli/parse-serve-uri',
      suite: 'unit',
 )
 
+# OTLP/JSON serializer (pure; no libcurl) — runs regardless of with_otel.
+test_unit_otlp_json = executable(
+        'test-unit-otlp-json',
+        'test_otlp_json.c',
+        files(meson.project_source_root() / 'src/cli/otlp_json.c'),
+        include_directories: [test_common_inc, intp_include,
+                              include_directories('../../src/cli')],
+        install: false,
+)
+
+test('cli/otlp-json',
+     test_unit_otlp_json,
+     suite: 'unit',
+)
+
 test_unit_jsonl = executable(
         'test-unit-jsonl',
         'test_jsonl_golden.c',

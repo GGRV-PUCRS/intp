@@ -103,9 +103,12 @@ endif
 mhd_dep = dependency('libmicrohttpd', required: opt_prometheus)
 prometheus_enabled = mhd_dep.found() and opt_prometheus
 
-# OpenTelemetry needs protobuf + (optionally) grpc.
-protobuf_dep = dependency('protobuf', required: opt_otel)
-otel_enabled = protobuf_dep.found() and opt_otel
+# OTLP metrics export is OTLP/HTTP + JSON over libcurl (NOT protobuf/gRPC,
+# whose closure the prometheus.c remote_write note forbids dragging into
+# libintp.so). Per ADR-0011 the exporter is compiled into the `intp` CLI
+# only — libcurl never enters libintp.so's dependency closure.
+curl_dep = dependency('libcurl', required: opt_otel)
+otel_enabled = curl_dep.found() and opt_otel
 
 # ---------------------------------------------------------------------------
 # Configuration data (consumed by include/intp/meson.build to generate

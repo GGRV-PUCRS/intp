@@ -13,7 +13,38 @@ in any minor release and will be flagged in the relevant section below.
 
 ### Added
 
-- _(nothing yet)_
+- **Plugin loader** (ADR-0004): `--plugin-dir` / `--enable-plugin` /
+  `--disable-plugin` load metric-provider plugins via dlopen, with a
+  directory trust model (root- or owner-owned, never world-writable),
+  ABI/kind/requirements validation before any plugin code runs, an optional
+  self-test gate, and a guard refusing any plugin that publishes a frozen
+  `system.interference.*` metric. Real `intp_plugin_ctx` private storage.
+- **Per-target output identity**: the JSONL sink emits the documented
+  `target` object (`kind`, `pid`/`cgroup`), and both Prometheus renderers
+  (`--serve` and `--format prometheus`) attach `{instance,target_kind,
+  cgroup,pid}` labels, so a multi-tenant scraper can attribute each series.
+- **OTLP/HTTP+JSON metrics exporter** (`--format otlp`, ADR-0011): built
+  with `-Dwith_otel=true`, streams to an OpenTelemetry collector over
+  libcurl, with resource attributes (`host.name`, `intp.target.*`, plus
+  `OTEL_RESOURCE_ATTRIBUTES`). libcurl is contained to the CLI binary,
+  never `libintp.so`.
+- Hardened example systemd unit + `sysusers.d` service account.
+- Tests: JSONL and Prometheus golden tests, the serve-URI parser, the
+  OTLP-JSON serializer, and a plugin-load integration test.
+
+### Changed
+
+- `--serve` binds **127.0.0.1 by default** (was 0.0.0.0); pass an explicit
+  host in the URI (e.g. `prometheus://0.0.0.0:9100`) to expose it. The
+  Prometheus render buffer grows on demand instead of failing a scrape,
+  INT64/UINT64 metrics are exported (no longer dropped), and every metric
+  carries `# HELP`/`# TYPE` with complete unit suffixes.
+- `-v/--verbose` is wired (libbpf print level + perf-path warnings);
+  `--pid` validates its argument; the CLI uses `sigaction`.
+- Packaging: DEP-5 `copyright` declares the GPL-2.0 vmlinux BTF dump and the
+  dual-licensed BPF objects; `debian/watch` matches pre-release tags;
+  `debian/control` deduped, `Standards-Version 4.7.0`, autopkgtest smoke.
+- `with_otel` resolves libcurl (was: protobuf).
 
 ---
 
