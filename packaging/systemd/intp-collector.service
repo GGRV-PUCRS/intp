@@ -1,8 +1,17 @@
-# Example systemd unit for a long-running intp collector.
+# Hardened systemd unit for a long-running intp collector that exposes the
+# Prometheus /metrics endpoint on loopback.
 #
-# NOT installed by the packages (decision: deferred to 1.0 with proper
-# hardening review; see docs/PACKAGING.md). Copy to /etc/systemd/system/
-# and adjust the target/format to taste.
+# Not auto-enabled by the package (the collector runs with elevated
+# capabilities and binds a port — that is an operator decision). Install with:
+#
+#   install -m644 packaging/systemd/intp-sysusers.conf /usr/lib/sysusers.d/intp.conf
+#   systemd-sysusers
+#   install -m644 packaging/systemd/intp-collector.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now intp-collector
+#
+# It binds 127.0.0.1:9100 by default. To scrape from another host, put a
+# reverse proxy in front, or change the ExecStart bind address to a routable
+# IP and widen IPAddressAllow below.
 
 [Unit]
 Description=intp interference profiler (Prometheus exposition)
@@ -11,16 +20,57 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/intp --serve=prometheus://:9100
+ExecStart=/usr/bin/intp --serve=prometheus://127.0.0.1:9100
 Restart=on-failure
+RestartSec=2
+
+# --- identity -------------------------------------------------------------
+# Static, unprivileged service account (see intp-sysusers.conf).
+User=intp
+Group=intp
+
+# --- capabilities ---------------------------------------------------------
 # intp degrades gracefully without these, but the RDT-backed metrics
-# (mbw, llcocc) and eBPF backends need them:
-# CAP_BPF + CAP_PERFMON for eBPF/perf, CAP_SYS_ADMIN for resctrl.
+# (mbw, llcocc) and eBPF backends need them: CAP_BPF + CAP_PERFMON for
+# eBPF/perf, CAP_SYS_ADMIN for resctrl. The bounding set caps the ceiling so
+# nothing the service loads can acquire anything broader.
 AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_ADMIN
 NoNewPrivileges=true
+
+# --- filesystem -----------------------------------------------------------
 ProtectHome=true
 ProtectSystem=strict
 ReadWritePaths=/sys/fs/resctrl
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+# cgroup files are read read-only for attribution; resctrl is the only
+# writable kernel fs (above). Validate on an RDT host before relying on
+# per-cgroup mbw/llcocc with this on.
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+
+# --- execution environment ------------------------------------------------
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+# Curated service allow-list plus the two privileged syscalls intp needs.
+# MemoryDenyWriteExecute is intentionally NOT set — it breaks the BPF JIT.
+SystemCallFilter=@system-service
+SystemCallFilter=bpf perf_event_open
+
+# --- network exposure -----------------------------------------------------
+# Belt-and-braces: the binary already binds loopback, and this confines the
+# service to localhost traffic regardless. Widen if you change the bind IP.
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target

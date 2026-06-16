@@ -132,3 +132,44 @@ test('plugins/portable-provider',
      test_unit_portable,
      suite: 'unit',
 )
+
+# Compiles the CLI's serve-URI parser directly (it is pure / standalone).
+test_unit_serve_uri = executable(
+        'test-unit-serve-uri',
+        'test_parse_serve_uri.c',
+        files(meson.project_source_root() / 'src/cli/serve_uri.c'),
+        include_directories: [test_common_inc,
+                              include_directories('../../src/cli')],
+        install: false,
+)
+
+test('cli/parse-serve-uri',
+     test_unit_serve_uri,
+     suite: 'unit',
+)
+
+test_unit_jsonl = executable(
+        'test-unit-jsonl',
+        'test_jsonl_golden.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('output/jsonl-golden',
+     test_unit_jsonl,
+     suite: 'unit',
+)
+
+test_unit_prometheus_fmt = executable(
+        'test-unit-prometheus-fmt',
+        'test_prometheus_fmt.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('output/prometheus-fmt',
+     test_unit_prometheus_fmt,
+     suite: 'unit',
+)

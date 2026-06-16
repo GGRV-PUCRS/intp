@@ -44,6 +44,9 @@
  * intp_portable_count(); checked with a static assert in portable.c. */
 #define INTP_CORE_PORTABLE_COUNT 8
 
+/* Max plugin-provided metric schema fragments merged into a ctx (ADR-0004). */
+#define INTP_CORE_PLUGIN_METRICS_MAX 32
+
 /* ------------------------------------------------------------------------ */
 /* Target binding (singleton, ported v2.1 intp_target_t)                     */
 /* ------------------------------------------------------------------------ */
@@ -72,6 +75,30 @@ struct intp_core_target {
 
 void intp_core_target_set(const struct intp_core_target *t);
 const struct intp_core_target *intp_core_target_get(void);
+
+/* Verbosity from opts.log_level: set at open, read by subsystems (e.g.
+ * the eBPF loader's libbpf print callback). 0 quiet, 1 warn, 2 info,
+ * 3 debug. */
+void intp_core_set_log_level(int level);
+int intp_core_log_level(void);
+
+/* Public-facing target identity for output sinks and Prometheus labels,
+ * derived from the active (process-singleton) ctx. Mirrors the
+ * --print-schema "target" block so every surface describes one target.
+ * `kind` is a static string; `cgroup` points into ctx-owned storage and
+ * is valid for the ctx lifetime. Returns 0, or -1 (with the system
+ * default filled in) when no ctx is open. */
+struct intp_output_target {
+	const char *kind;   /* "system" | "pid" | "cgroup" | "vm" */
+	long pid;	    /* > 0 only when kind == "pid" */
+	const char *cgroup; /* non-NULL only when a cgroup path is bound */
+};
+int intp_core_output_target(struct intp_output_target *out);
+
+/* One-line description of a metric from the active ctx's schema, for a
+ * Prometheus `# HELP` line. Returns "" if no ctx is open or the metric
+ * has no description. The pointer is valid for the ctx lifetime. */
+const char *intp_core_metric_help(const char *name);
 
 /* ------------------------------------------------------------------------ */
 /* Per-read sample (ported v2.1 metric_sample_t)                             */
@@ -190,8 +217,13 @@ struct intp_ctx {
 	bool portable_enabled;
 
 	struct intp_metric_schema
-		schema[INTP_CORE_METRICS_COUNT + INTP_CORE_PORTABLE_COUNT];
+		schema[INTP_CORE_METRICS_COUNT + INTP_CORE_PORTABLE_COUNT +
+		       INTP_CORE_PLUGIN_METRICS_MAX];
 	size_t schema_len;
+
+	/* Loaded plugins (struct intp_plugin_set *, plugin_loader.h), or
+	 * NULL when none are loaded. */
+	void *plugins;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -217,6 +249,7 @@ struct intp_core_extras {
 	const struct intp_core_force *forces;
 	size_t n_forces;
 	const char *const *disabled_metrics; /* NULL-terminated */
+	const char *const *enabled_plugins;  /* --enable-plugin allowlist, NULL-term */
 	long nic_speed_bps_override;	     /* 0 = use detection */
 	long mem_bw_max_bps_override;
 	long llc_size_bytes_override;
@@ -242,6 +275,17 @@ int intp_core_open_ex(const struct intp_options *opts,
  * Blocks until SIGINT/SIGTERM; does not close the context. Returns
  * -ENOSYS when built with -Dwith_prometheus=false. */
 int intp_core_serve_prometheus(struct intp_ctx *ctx, uint16_t port);
+
+/* Richer serve entry used by the CLI: binds bind_host instead of the
+ * wildcard address. bind_host NULL or "" => loopback 127.0.0.1;
+ * "0.0.0.0" exposes on all interfaces. intp_core_serve_prometheus()
+ * above is a thin wrapper with bind_host = NULL (loopback default). */
+struct intp_serve_opts {
+	const char *bind_host;
+	uint16_t port;
+};
+int intp_core_serve_prometheus_ex(struct intp_ctx *ctx,
+				  const struct intp_serve_opts *opts);
 
 /* Registry helpers (also used by the unit tests). */
 int intp_core_registry_build(struct intp_ctx *ctx);

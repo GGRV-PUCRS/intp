@@ -9,6 +9,8 @@ libintp_sources = files(
 # Depends automatically via dh_shlibdeps when the corresponding option
 # is enabled.
 libintp_deps = []
+# dlopen(3) for the plugin loader (ADR-0004).
+libintp_deps += cc.find_library('dl', required: false)
 if ebpf_enabled
         libintp_deps += libbpf_dep
 endif

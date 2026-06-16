@@ -1,5 +1,6 @@
 intp_cli_sources = files(
         'main.c',
+        'serve_uri.c',
 )
 
 # The CLI links the internal static archive rather than the shared

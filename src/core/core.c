@@ -20,10 +20,25 @@
 #include "../backends/common/procutil.h"
 #include "../plugins/portable-metrics/portable.h"
 #include "detect.h"
+#include "plugin_loader.h"
 
 /* Backends keep file-scope state (ported design); enforce one ctx per
  * process until the backends are made reentrant (post-1.0). */
 static struct intp_ctx *g_open_ctx;
+
+/* Verbosity (opts.log_level), set at open and read by subsystems such as
+ * the eBPF loader's libbpf print callback. 0 quiet, 1 warn, 2 info, 3 debug. */
+static int g_log_level;
+
+void intp_core_set_log_level(int level)
+{
+	g_log_level = level;
+}
+
+int intp_core_log_level(void)
+{
+	return g_log_level;
+}
 
 static const char *const metric_descriptions[INTP_CORE_METRICS_COUNT] = {
 	"NIC-level network utilization (share of physical link bandwidth)",
@@ -128,6 +143,7 @@ int intp_core_open_ex(const struct intp_options *opts,
 	ctx->opts = *opts;
 	if (ctx->opts.interval_ms == 0)
 		ctx->opts.interval_ms = 1000;
+	intp_core_set_log_level(ctx->opts.log_level);
 
 	int rc = resolve_target(ctx, opts);
 
@@ -237,6 +253,14 @@ int intp_core_open_ex(const struct intp_options *opts,
 		}
 	}
 
+	/* Load plugins last, so their metrics append after the frozen seven
+	 * and the portable set (preserving tsv-legacy column order). A bad
+	 * plugin is skipped, never failing the open. */
+	intp_plugin_load_all(ctx, ctx->opts.plugin_dirs,
+			     extras ? extras->enabled_plugins : NULL,
+			     ctx->opts.disabled_plugins);
+	intp_plugin_merge_schema(ctx);
+
 	g_open_ctx = ctx;
 	*out = ctx;
 	return 0;
@@ -251,6 +275,7 @@ void intp_core_close(struct intp_ctx *ctx)
 {
 	if (!ctx)
 		return;
+	intp_plugin_unload_all(ctx);
 	if (ctx->portable_enabled)
 		intp_portable_cleanup();
 	intp_core_cleanup_backends(ctx);
@@ -300,6 +325,36 @@ static const char *target_kind_str(const struct intp_ctx *ctx)
 	default:
 		return "system";
 	}
+}
+
+int intp_core_output_target(struct intp_output_target *out)
+{
+	out->kind = "system";
+	out->pid = 0;
+	out->cgroup = NULL;
+	if (!g_open_ctx)
+		return -1;
+
+	const struct intp_ctx *ctx = g_open_ctx;
+
+	out->kind = target_kind_str(ctx);
+	if (ctx->opts.target.kind == INTP_TARGET_PID)
+		out->pid = ctx->opts.target.pid;
+	if (ctx->opts.target.kind == INTP_TARGET_CGROUP &&
+	    ctx->cgroup_path_buf[0])
+		out->cgroup = ctx->cgroup_path_buf;
+	return 0;
+}
+
+const char *intp_core_metric_help(const char *name)
+{
+	if (!g_open_ctx || !name)
+		return "";
+
+	const struct intp_metric_schema *s =
+		intp_schema_find(g_open_ctx, name);
+
+	return (s && s->description) ? s->description : "";
 }
 
 int intp_core_print_schema(struct intp_ctx *ctx, int fd)

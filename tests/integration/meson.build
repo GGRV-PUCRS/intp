@@ -30,6 +30,27 @@ test('cli/print-schema-lists-7-core-metrics',
      depends: intp_exe,
 )
 
+# Plugin loader (ADR-0004): with the hello-world example built, loading it
+# via --plugin-dir publishes its metric (app.hello.tick, starting at 0,
+# proving init + private storage + the sample loop), and --disable-plugin
+# suppresses it. Gated on with_examples (the .so must exist).
+if get_option('with_examples')
+        test('cli/plugin-loads-and-publishes',
+             find_program('sh'),
+             args: ['-c', '''
+                BIN=@0@
+                DIR=@1@
+                OUT=$($BIN --plugin-dir "$DIR" -i 50ms -d 160ms -f jsonl 2>/dev/null)
+                echo "$OUT" | grep -q '"app.hello.tick":0' || exit 1
+                $BIN --plugin-dir "$DIR" --disable-plugin hello-world -i 20ms -d 1ms -f jsonl 2>/dev/null | grep -q "app.hello.tick" && exit 1
+                exit 0
+             '''.format(meson.project_build_root() / 'src/cli/intp',
+                        meson.project_build_root() / 'examples/plugin-hello-world')],
+             suite: 'integration',
+             depends: [intp_exe, hello_world_plugin],
+        )
+endif
+
 # Live tests (require root + real kernel) live under live/ and are
 # opted into with `meson test --suite live`. They are intentionally
 # *not* added to the default suite. Until live/ has cases this is

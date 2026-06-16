@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@
 #include "../core/core.h"
 #include "../core/detect.h"
 #include "../output/output.h"
+#include "serve_uri.h"
 
 static const char usage_text[] =
 	"Usage: intp [OPTIONS]\n"
@@ -330,51 +332,31 @@ static int run_probe_ebpf(void)
 	}
 }
 
-/* Parse `--serve [arg]` into a port, where arg is one of:
- *   (empty)                       → prometheus on 9100
- *   "prometheus"                  → prometheus on 9100
- *   "prometheus://[host:]port"    → prometheus on the given port
- * Host part is currently ignored; libmicrohttpd binds 0.0.0.0.
- * Returns 0 and sets *out_port, or -1 on a malformed/unsupported URI. */
-static int parse_serve_uri(const char *arg, uint16_t *out_port)
-{
-	const char *proto = arg ? arg : "prometheus";
-	uint16_t port = 9100;
-
-	if (strncmp(proto, "prometheus", 10) != 0) {
-		fprintf(stderr,
-			"intp: --serve %s is not supported.\n"
-			"      Supported: --serve prometheus[://[host:]port] "
-			"(default :9100)\n",
-			proto);
-		return -1;
-	}
-
-	const char *rest = proto + 10;
-	if (*rest == ':' && rest[1] == '/' && rest[2] == '/') {
-		rest += 3;
-		const char *colon = strrchr(rest, ':');
-		if (colon) {
-			long p = strtol(colon + 1, NULL, 10);
-			if (p > 0 && p <= 65535)
-				port = (uint16_t)p;
-		}
-	} else if (*rest != '\0') {
-		fprintf(stderr, "intp: malformed --serve argument: %s\n",
-			proto);
-		return -1;
-	}
-	*out_port = port;
-	return 0;
-}
-
 #define MAX_DISABLED 32
+
+/* Split a comma-separated list (e.g. --enable-plugin a,b) into arr from
+ * index n. Tokens are strdup'd (process-lifetime; never freed). */
+static size_t add_csv(const char *spec, const char **arr, size_t n, size_t max)
+{
+	char *copy = strdup(spec);
+
+	if (!copy)
+		return n;
+
+	char *save = NULL;
+
+	for (char *t = strtok_r(copy, ",", &save); t && n < max;
+	     t = strtok_r(NULL, ",", &save))
+		arr[n++] = strdup(t);
+	free(copy);
+	return n;
+}
 
 static int run_sampling(const struct intp_options *opts,
 			const struct intp_core_extras *extras,
 			const char *format, long duration_ms,
 			bool print_schema_only, bool list_backends,
-			bool do_serve, uint16_t serve_port)
+			bool do_serve, const struct intp_serve_target *serve_tgt)
 {
 	struct intp_ctx *ctx = NULL;
 	int rc = intp_core_open_ex(opts, extras, &ctx);
@@ -397,15 +379,21 @@ static int run_sampling(const struct intp_options *opts,
 	}
 
 	if (do_serve) {
+		const char *bind =
+			serve_tgt->host[0] ? serve_tgt->host : "127.0.0.1";
+		struct intp_serve_opts so = {
+			.bind_host = serve_tgt->host[0] ? serve_tgt->host : NULL,
+			.port = serve_tgt->port,
+		};
+
 		fprintf(stderr,
-			"intp: serving Prometheus exposition on :%u (live "
+			"intp: serving Prometheus exposition on %s:%u (live "
 			"values, %ums cadence).\n"
-			"intp: scrape http://localhost:%u/metrics ; SIGINT "
-			"to stop.\n",
-			serve_port,
-			opts->interval_ms ? opts->interval_ms : 1000,
-			serve_port);
-		rc = intp_core_serve_prometheus(ctx, serve_port);
+			"intp: scrape http://%s:%u/metrics ; SIGINT to stop.\n",
+			bind, serve_tgt->port,
+			opts->interval_ms ? opts->interval_ms : 1000, bind,
+			serve_tgt->port);
+		rc = intp_core_serve_prometheus_ex(ctx, &so);
 		intp_close(ctx);
 		if (rc == -ENOSYS) {
 			fprintf(stderr,
@@ -442,8 +430,11 @@ static int run_sampling(const struct intp_options *opts,
 		return 1;
 	}
 
-	signal(SIGINT, on_signal);
-	signal(SIGTERM, on_signal);
+	struct sigaction sigact = {.sa_handler = on_signal};
+
+	sigemptyset(&sigact.sa_mask);
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
 
 	struct timespec start;
 
@@ -495,11 +486,17 @@ int main(int argc, char *argv[])
 	bool do_print_schema = false;
 	bool do_list_backends = false;
 	bool do_serve = false;
-	uint16_t serve_port = 9100;
+	struct intp_serve_target serve_tgt = {.port = 9100};
 	const char *disabled_backends[MAX_DISABLED + 1] = {NULL};
 	size_t n_disabled = 0;
 	const char *disabled_metrics[MAX_DISABLED + 1] = {NULL};
 	size_t n_disabled_metrics = 0;
+	const char *plugin_dirs[MAX_DISABLED + 1] = {NULL};
+	size_t n_plugin_dirs = 0;
+	const char *enabled_plugins[MAX_DISABLED + 1] = {NULL};
+	size_t n_enabled_plugins = 0;
+	const char *disabled_plugins[MAX_DISABLED + 1] = {NULL};
+	size_t n_disabled_plugins = 0;
 	struct intp_core_force forces[16];
 	struct intp_core_extras extras = {0};
 	static pid_t pid_list[INTP_CORE_MAX_PIDS];
@@ -523,19 +520,23 @@ int main(int argc, char *argv[])
 		case OPT_PROBE:
 			return run_probe_ebpf();
 		case OPT_SERVE:
-			if (parse_serve_uri(optarg, &serve_port) != 0)
+			if (intp_parse_serve_uri(optarg, &serve_tgt) != 0)
 				return 2;
 			do_serve = true;
 			break;
-		case 'p':
-			opts.target.kind = INTP_TARGET_PID;
-			opts.target.pid = (pid_t)atoi(optarg);
-			if (opts.target.pid <= 0) {
-				fprintf(stderr, "intp: bad --pid: %s\n",
-					optarg);
+		case 'p': {
+			char *pend = NULL;
+			long pid = strtol(optarg, &pend, 10);
+
+			if (pend == optarg || *pend != '\0' || pid <= 0 ||
+			    pid > INT_MAX) {
+				fprintf(stderr, "intp: bad --pid: %s\n", optarg);
 				return 2;
 			}
+			opts.target.kind = INTP_TARGET_PID;
+			opts.target.pid = (pid_t)pid;
 			break;
+		}
 		case 'c':
 		case OPT_TARGET_CONTAINER:
 			opts.target.kind = INTP_TARGET_CGROUP;
@@ -650,12 +651,19 @@ int main(int argc, char *argv[])
 			extras.disk = optarg;
 			break;
 		case OPT_PLUGIN_DIR:
+			if (n_plugin_dirs < MAX_DISABLED)
+				plugin_dirs[n_plugin_dirs++] = optarg;
+			break;
 		case OPT_ENABLE_PLUGIN:
+			n_enabled_plugins = add_csv(optarg, enabled_plugins,
+						    n_enabled_plugins,
+						    MAX_DISABLED);
+			break;
 		case OPT_DISABLE_PLUGIN:
-			fprintf(stderr,
-				"intp: plugin loading is not wired up yet"
-				" (lands with the plugin loader phase).\n");
-			return 2;
+			n_disabled_plugins = add_csv(optarg, disabled_plugins,
+						     n_disabled_plugins,
+						     MAX_DISABLED);
+			break;
 		default:
 			fprintf(stderr, "Try 'intp --help' for usage.\n");
 			return 2;
@@ -702,9 +710,15 @@ int main(int argc, char *argv[])
 		opts.disabled_backends = disabled_backends;
 	if (n_disabled_metrics > 0)
 		extras.disabled_metrics = disabled_metrics;
+	if (n_plugin_dirs > 0)
+		opts.plugin_dirs = plugin_dirs;
+	if (n_disabled_plugins > 0)
+		opts.disabled_plugins = disabled_plugins;
+	if (n_enabled_plugins > 0)
+		extras.enabled_plugins = enabled_plugins;
 	extras.forces = forces;
 
 	return run_sampling(&opts, &extras, format, duration_ms,
 			    do_print_schema, do_list_backends, do_serve,
-			    serve_port);
+			    &serve_tgt);
 }
