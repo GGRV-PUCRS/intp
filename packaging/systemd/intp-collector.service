@@ -54,6 +54,7 @@ ProtectClock=true
 ProtectHostname=true
 RestrictSUIDSGID=true
 RemoveIPC=true
+UMask=0077
 
 # --- execution environment ------------------------------------------------
 LockPersonality=true
