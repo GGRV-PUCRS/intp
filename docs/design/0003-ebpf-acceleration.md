@@ -115,4 +115,4 @@ following the layout established in v3 of the comparison repository.
   debuggable. The failure path logs the rejected program name, the
   kernel version, and the relevant BTF probe; users filing
   kernel-compat issues can paste this into the
-  [kernel-compat issue template](../.github/ISSUE_TEMPLATE/kernel-compat.yml).
+  [kernel-compat issue template](../../.github/ISSUE_TEMPLATE/kernel-compat.yml).
