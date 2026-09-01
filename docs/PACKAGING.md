@@ -147,6 +147,14 @@ debuild -S -sa
 dput ppa:<owner>/intp ../intp_0.9.0-1_source.changes
 ```
 
+**Tagging.** Every `chore(release)` commit gets an annotated
+`v<version>` tag at release time; pre-releases use `-rc1`-style
+suffixes because `~` is illegal in git refnames (`debian/watch`
+mangles the suffix back to `~rc1` for Debian ordering). Tags are
+pushed with the release. The retroactive set marks the PPA's
+published states: `v0.1.0-placeholder2`, `v0.2.0-placeholder`,
+`v0.9.0-rc1`, `v0.9.0`.
+
 Notes for the Launchpad build environment:
 
 - builders have no `/sys/kernel/btf/vmlinux`; the checked-in
