@@ -149,7 +149,7 @@ static void print_version(void)
 	printf("  OpenTelemetry sink:   enabled\n");
 #endif
 	printf("\n");
-	printf("intp is the production successor to intp-comparison.\n");
+	printf("intp is the production successor to across-intp (https://github.com/ggrv-intp/across-intp).\n");
 	printf("License: MIT. See LICENSE in the source distribution.\n");
 }
 
