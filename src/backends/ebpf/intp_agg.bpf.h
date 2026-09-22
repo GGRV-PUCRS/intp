@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.h @ 2e87b30fc762
  * BPF programs byte-frozen: no changes other than this header.
  */

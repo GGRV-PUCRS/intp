@@ -2,7 +2,7 @@
 /*
  * procutil.c — procfs / sysfs parsing helpers.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/procutil.c @ 2e87b30fc762
  * Parsing logic is preserved verbatim (reformatted to kernel style);
  * the typedef names became struct tags per the tree's conventions.

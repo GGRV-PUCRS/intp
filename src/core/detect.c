@@ -2,7 +2,7 @@
 /*
  * detect.c — runtime hardware/kernel/environment detection.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/detect.c @ 2e87b30fc762
  *
  * Read-only inspection of /proc, /sys, and (optionally) dmidecode. The

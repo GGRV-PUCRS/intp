@@ -4,7 +4,7 @@
  * dispatcher state. NOT installed; the public ABI lives in
  * include/intp/.
  *
- * The backend model is ported from intp-comparison:
+ * The backend model is ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/backend.h @ 2e87b30fc762
  * adapted to ADR-0001 (linker-section registration, ordered selection
  * recorded for --print-schema) and ADR-0010 (semantic model and
@@ -301,7 +301,7 @@ void intp_core_disable_metric(struct intp_ctx *ctx, const char *metric);
 /* Frozen short-name order: netp nets blk mbw llcmr llcocc cpu. */
 extern const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT];
 
-/* Target-spec helpers ported from intp-comparison:
+/* Target-spec helpers ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
  * (--pids CSV parsing and /proc comm matching; shared with the unit
  * tests). */

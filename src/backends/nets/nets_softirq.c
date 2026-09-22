@@ -3,7 +3,7 @@
  * nets_softirq.c — network stack utilization, two backends (always
  * DEGRADED).
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/nets.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker

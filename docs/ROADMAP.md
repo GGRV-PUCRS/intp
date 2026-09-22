@@ -28,7 +28,7 @@ README applies to every single stage.
 [`ggrv-intp/intp`](https://github.com/ggrv-intp/intp) exists, is
 public, and links unambiguously to the source-of-truth research
 repository
-[`ggrv-intp/intp-comparison`](https://github.com/ggrv-intp/intp-comparison).
+[`ggrv-intp/across-intp`](https://github.com/ggrv-intp/across-intp).
 
 **Artefact:** this README and these documents.
 
@@ -47,7 +47,7 @@ checked before Stage 3 begins.
 > higher-priority acceleration backends — the hybrid ADR-0003
 > anticipated. See SYNC.md for the freeze commit and provenance.
 
-**Gate:** the seven variants in `intp-comparison` have been
+**Gate:** the seven variants in `across-intp` have been
 benchmarked head-to-head on the dissertation's reference hardware,
 with the results published in the corresponding chapter.
 
@@ -66,7 +66,7 @@ on:
 **What could stall it:** an unexpected fidelity gap that forces a
 hybrid (v2 + selective eBPF probes), which would push the convergence
 date back. The
-[VARIANT-COMPARISON](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/VARIANT-COMPARISON.md)
+[VARIANT-COMPARISON](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md)
 document tracks the live state of this analysis.
 
 ---
@@ -277,8 +277,8 @@ available externally.
 
 The dissertation defense (expected March 2027) will produce the
 canonical academic reference. Until then, the
-[`CITATION.cff`](https://github.com/ggrv-intp/intp-comparison/blob/main/CITATION.cff)
-in `intp-comparison` is the source of truth for citing this work.
+[`CITATION.cff`](https://github.com/ggrv-intp/across-intp/blob/main/CITATION.cff)
+in `across-intp` is the source of truth for citing this work.
 
 ### Naming and namespace
 

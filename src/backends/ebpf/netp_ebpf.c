@@ -2,7 +2,7 @@
 /*
  * netp_ebpf.c — network physical utilization, eBPF backend shim.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.c @ 2e87b30fc762
  * compute_sample()'s canonical-netp slice (cgroup_skb bytes / VM tap
  * override) plus the device-level rate v3.3 computes as netp_dev,

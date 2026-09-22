@@ -15,7 +15,7 @@
 
 > **This repository now carries the working profiler.** The engine was
 > designed, compared, and hardened across measured variants in
-> **[intp-comparison](https://github.com/ggrv-intp/intp-comparison)**
+> **[across-intp](https://github.com/ggrv-intp/across-intp)**
 > (SBAC-PAD 2026), then ported here under a port-and-freeze contract —
 > see [SYNC.md](SYNC.md) for the provenance map. The pure-C stable-ABI
 > engine (heir of variant v2.1) is the baseline; the eBPF/CO-RE engine
@@ -57,7 +57,7 @@ from whom?"*:
 
 Each metric is a window; the set is the *fingerprint* of interference.
 The technical deep-dive lives in
-[METRICS-DEEP-DIVE](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/METRICS-DEEP-DIVE.md).
+[METRICS-DEEP-DIVE](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md).
 
 ## Why this exists
 
@@ -77,10 +77,10 @@ need in order to decide.
 `intp` is not a replacement for `htop`. It is the missing sensor
 between *"this metric is high"* and *"this is hurting the neighbour"*.
 
-## Relationship with `intp-comparison`
+## Relationship with `across-intp`
 
 The sibling repository
-[`intp-comparison`](https://github.com/ggrv-intp/intp-comparison) is the
+[`across-intp`](https://github.com/ggrv-intp/across-intp) is the
 test bench. Seven implementations coexist there, each with a different
 combination of instrumentation paradigm, cost, portability, and
 fidelity:
@@ -134,11 +134,11 @@ process that involves more than code.
 ## How to follow along
 
 The research record, benchmark campaigns, and historical variants live in
-[`intp-comparison`](https://github.com/ggrv-intp/intp-comparison) —
+[`across-intp`](https://github.com/ggrv-intp/across-intp) —
 home of the variants, the benchmarks, and the technical documents
-([METRICS-DEEP-DIVE](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/METRICS-DEEP-DIVE.md),
-[KERNEL-6.8-CHANGES](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/KERNEL-6.8-CHANGES.md),
-[VARIANT-COMPARISON](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/VARIANT-COMPARISON.md)).
+([METRICS-DEEP-DIVE](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md),
+[KERNEL-6.8-CHANGES](https://github.com/ggrv-intp/across-intp/blob/main/docs/KERNEL-6.8-CHANGES.md),
+[VARIANT-COMPARISON](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md)).
 
 Local documentation:
 
@@ -148,8 +148,8 @@ Local documentation:
 ## Citation
 
 Until the defense happens, please cite the source repository
-(`intp-comparison`) using the metadata in
-[CITATION.cff](https://github.com/ggrv-intp/intp-comparison/blob/main/CITATION.cff).
+(`across-intp`) using the metadata in
+[CITATION.cff](https://github.com/ggrv-intp/across-intp/blob/main/CITATION.cff).
 The dissertation reference will be added after the defense, expected
 in **March 2027**.
 

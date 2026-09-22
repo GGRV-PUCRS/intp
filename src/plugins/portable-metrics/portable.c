@@ -2,7 +2,7 @@
 /*
  * portable.c — VM-portable interference metrics (system.portable.*).
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/portable.c @ 2e87b30fc762
  * Formulas, fallback chains, and backend order preserved verbatim;
  * the per-metric accessor singletons and the registry helpers

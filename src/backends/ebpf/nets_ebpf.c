@@ -2,7 +2,7 @@
 /*
  * nets_ebpf.c — network stack (softirq) utilization, eBPF backend shim.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.c @ 2e87b30fc762
  * compute_sample()'s nets slice, verbatim:
  *

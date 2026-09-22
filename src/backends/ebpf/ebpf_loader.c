@@ -3,7 +3,7 @@
  * ebpf_loader.c — refcounted singleton around the intp_agg BPF
  * skeleton shared by the five eBPF backend shims.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.c @ 2e87b30fc762
  * The pieces of v3.3's main() live here as follows:
  *   - resolve_cgroup_identity, libbpf_quiet, open/close_cache_counters,

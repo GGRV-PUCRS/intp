@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/plot/extract-fragility.py @ 2e87b30fc762
 # with the I/O plumbing adapted to the bench/gates run tree and the
 # loss DEFINITION reduced to the origin's stress-ng leg: expected

@@ -3,7 +3,7 @@
  * ebpf_loader.h — refcounted singleton around the intp_agg BPF
  * skeleton shared by the five eBPF backend shims.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.c @ 2e87b30fc762
  * (skeleton lifecycle, cgroup-identity resolution, perf-event LLC
  * counter attach, per-interval map snapshot + counters_diff), reshaped

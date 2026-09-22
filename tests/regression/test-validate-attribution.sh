@@ -6,7 +6,7 @@
 # no root/cgroups needed, so it runs anywhere (including CI-adjacent
 # local checks).
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/test-validate-attribution.sh @ 2e87b30fc762
 # adapted to the intp port: synthetic input is tsv-legacy-v1 (7 columns,
 # '--' for unavailable) instead of v2.1 JSON; the jq dependency and the

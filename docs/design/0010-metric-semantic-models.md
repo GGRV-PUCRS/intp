@@ -9,7 +9,7 @@
 ## Context
 
 The seven-metric contract froze the metric *names*, but the comparison
-campaign (intp-comparison / across-intp, SBAC-PAD 2026) demonstrated
+campaign (across-intp, SBAC-PAD 2026) demonstrated
 that two backends emitting the same column can measure different
 latent quantities. The canonical example is `blk`: the eBPF backend
 integrates per-request service time (queue-depth-aware, the

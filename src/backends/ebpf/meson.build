@@ -1,6 +1,6 @@
 # eBPF backends (ADR-0003): opt-in higher-priority candidates for
 # netp/nets/blk/cpu/llcmr. Only entered when ebpf_enabled (see
-# src/backends/meson.build). Build pipeline ported from intp-comparison
+# src/backends/meson.build). Build pipeline ported from across-intp
 # variants/v3.3-ebpf-core-cgroup/Makefile @ 2e87b30fc762:
 #
 #   1. vmlinux.h     bpftool btf dump of the build host's BTF, or the

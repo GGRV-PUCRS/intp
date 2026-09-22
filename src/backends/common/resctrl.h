@@ -2,7 +2,7 @@
 /*
  * resctrl.h — thin wrapper over /sys/fs/resctrl for IntP backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/resctrl.h @ 2e87b30fc762
  *
  * resctrl is the cross-vendor cache/bandwidth monitoring API:

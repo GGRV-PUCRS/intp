@@ -95,9 +95,9 @@ that:
 A metric whose entire backend list fails to probe is *reported* as
 unavailable in `intp --print-schema` rather than silently zeroed —
 this avoids the "metric quietly returns 0 forever" trap that bit
-several intp-comparison variants.
+several across-intp variants.
 
-This is the same pattern v2 introduced in `intp-comparison/v2-c-stable-abi/`
+This is the same pattern v2 introduced in `across-intp/v2-c-stable-abi/`
 (see `DESIGN.md` there); the new contribution in `intp` is opening
 the list to plugins, so an out-of-tree eBPF backend or a vendor's
 ROCm SMI backend can register without rebuilding the binary.
@@ -150,7 +150,7 @@ and are stable from `intp 1.0`. Plugin-defined metrics live under
 `app.<service>.*`).
 
 A *legacy* mode (`--format tsv-legacy-v1`) emits exactly the
-seven-column TSV that all `intp-comparison` consumers already parse,
+seven-column TSV that all `across-intp` consumers already parse,
 bit-for-bit. This is the bridge that lets IADA, the dissertation
 plotting code, and the Meyer-CSV converter keep working unchanged.
 
@@ -234,14 +234,14 @@ A condensed map (the full layout is in the project plan):
 | `src/lib/`                | `libintp.c` — public API entry points.                          |
 | `src/cli/`                | `main.c` — argument parsing, output sink wiring.                |
 | `tests/`                  | Unit, integration, plugin-ABI, regression tests.                |
-| `bench/`                  | Workload-pair benchmarks ported from `intp-comparison`.         |
+| `bench/`                  | Workload-pair benchmarks ported from `across-intp`.         |
 | `integrations/`           | Adapters (Prometheus exporter, k8s plugin, IADA glue, …).        |
 | `bindings/`               | Python / Go / Rust bindings over `libintp`.                     |
 | `packaging/`              | Distro packaging (Debian, RPM, Arch, …).                        |
 
 ---
 
-## Heritage from `intp-comparison`
+## Heritage from `across-intp`
 
 Where this design comes from, in one paragraph: v2's pure-C backend
 registry is the spine; v3's eBPF programs slot in as just another
@@ -252,5 +252,5 @@ historical references. The hybrid recovers v0's metric coverage
 without v0's kernel-module footprint.
 
 The dissertation chapter on variant comparison
-(`intp-comparison/docs/VARIANT-COMPARISON.md`) is the long-form
+(`across-intp/docs/VARIANT-COMPARISON.md`) is the long-form
 justification.
