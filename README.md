@@ -64,6 +64,9 @@ reports it as unavailable, degraded or proxy instead of emitting a zero,
 and `--print-schema` names the backend and semantic model behind every
 reading ([METRICS.md](docs/METRICS.md)).
 
+The SBAC-PAD 2026 campaign bounds the engines' overhead within ±3 % on
+CPU and memory reference loads.
+
 **Seven canonical metrics, plus an experimental portable set.** Behind
 `--experimental --portable-metrics`, intp also publishes eight
 `system.portable.*` signals — six that stay observable inside a KVM

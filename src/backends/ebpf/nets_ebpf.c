@@ -16,7 +16,7 @@
  *	DEVICE bytes (net_dev_xmit/netif_receive_skb). Falls back to 0
  *	when no device bytes were observed host-wide this interval.
  *	Surfaced as status PROXY, note "byteshare_proxy"; parity checks
- *	must exempt it (port-and-freeze decision log).
+ *	must exempt it (across-intp C2).
  */
 
 #include <string.h>
