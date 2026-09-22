@@ -254,3 +254,16 @@ without v0's kernel-module footprint.
 The dissertation chapter on variant comparison
 (`across-intp/docs/VARIANT-COMPARISON.md`) is the long-form
 justification.
+
+**Outcome.** The SBAC-PAD 2026 campaign measured the stable-ABI C
+line and the in-kernel-aggregating eBPF/CO-RE line against a
+SystemTap baseline faithful to the 2022 probe set, and selected their
+per-cgroup versions, v2.1 and v3.3, as this tree's two engines. The
+deployment study that followed (containers and a KVM guest; JSA
+manuscript, submitted) set the rules intp now applies inside guests:
+metrics that depend on RDT read unavailable, the `llcocc` miss-ratio
+proxy and the architectural-cache `llcmr` fallback are labelled as
+such, and the portable set stays behind `--experimental` until its
+verdicts are final. The per-metric consequences are in
+[METRICS.md](METRICS.md); the sync with across-intp is in
+[SYNC.md](../SYNC.md).
