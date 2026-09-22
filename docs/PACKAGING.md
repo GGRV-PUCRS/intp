@@ -130,8 +130,24 @@ maintainer is confident it is wrong, with a comment explaining why.
 
 ### Personal PPA workflow
 
-Human-gated: the upload itself is performed by the maintainer, never
-by automation. The release candidate is prepared with:
+Human-gated: pushes, tags and uploads are performed by the maintainer,
+never by automation. Two PPAs are in play:
+
+| PPA | Purpose |
+| --- | --- |
+| `ppa:norohim/intp` | What users install. Receives only binaries copied from staging after they passed there. |
+| `ppa:norohim/intp-staging` | Release candidates and every first build of a release. Version numbers are checked per PPA, so candidates never burn a version in the main PPA. |
+
+Both build amd64 and arm64. One orig tarball serves three series; each
+series gets its own source upload, versioned with a `~ppaN~ubuntuYY.MM.1`
+suffix that sorts below the eventual archive version:
+
+| Kind | Git tag | Source version (noble) |
+| --- | --- | --- |
+| Final | `v0.10.0` | `0.10.0-1~ppa1~ubuntu24.04.1` |
+| Release candidate | `v0.10.0-rc1` | `0.10.0~rc1-1~ppa1~ubuntu24.04.1` (staging only) |
+| Packaging-only fix | none | `0.10.0-1~ppa2~ubuntu24.04.1` |
+| Other series | none | `...~ubuntu22.04.1` (jammy), `...~ubuntu26.04.1` (resolute) |
 
 ```bash
 # one-time: dpkg expects debian/ at the source root
@@ -139,32 +155,59 @@ ln -s packaging/debian debian
 
 # binary build + lintian locally
 dpkg-buildpackage -us -uc
-lintian -EvIL +pedantic ../intp_0.9.0~rc1-1_amd64.changes
+lintian -EvIL +pedantic ../intp_0.10.0-1_amd64.changes
 
-# source package for the PPA (after the remote gate passes and the
-# v0.9.0 tag is stamped):
-debuild -S -sa
-dput ppa:<owner>/intp ../intp_0.9.0-1_source.changes
+# source packages for jammy, noble and resolute from one orig tarball
+# (after the remote gate passes and the tag is stamped on main)
+packaging/make-source-package.sh --signed
+dput ppa:norohim/intp-staging ../intp_0.10.0-1~ppa1~ubuntu*_source.changes
 ```
 
-**Tagging.** Every `chore(release)` commit gets an annotated
+Once all six builds (3 series x 2 architectures) succeed in staging and
+pass the smoke test, copy the binaries to `ppa:norohim/intp` with
+Launchpad's *Copy packages* (same series, no rebuild), so users get
+exactly what was tested. Never copy a binary across series.
+
+**Burned versions.** Launchpad never accepts a version, or an orig
+tarball name with different content, twice. `0.1.0~placeholder-1` (two
+failed builds, bad orig tarball), `0.1.0~placeholder2-1` and
+`0.2.0~placeholder-1` are used forever in the main PPA. `0.9.0~rc1-1`
+and `0.9.0-1` were gated but never uploaded; their tags are
+upstream-only history.
+
+**Tarball discipline.** Cut the orig tarball once per upstream version
+with `make-source-package.sh`, attach it to the GitHub release with
+`SHA256SUMS`, and fetch it from there for later series or rebuilds:
+`git archive` output is not guaranteed byte-identical across git
+versions.
+
+**libintp1 → libintp0.** The 0.2.0 placeholder published the binary
+package `libintp1` on noble, with the same library paths as
+`libintp0`. `libintp0` (the right name for SONAME 0) carries
+`Breaks`/`Replaces: libintp1 (<< 0.10.0~)`, so `apt upgrade` swaps them.
+Test that path in staging: install the placeholder from the main PPA,
+add staging, upgrade.
+
+**Tagging.** Every `chore(release)` commit on `main` gets an annotated
 `v<version>` tag at release time; pre-releases use `-rc1`-style
 suffixes because `~` is illegal in git refnames (`debian/watch`
-mangles the suffix back to `~rc1` for Debian ordering). Tags are
-pushed with the release. The retroactive set marks the PPA's
-published states: `v0.1.0-placeholder2`, `v0.2.0-placeholder`,
-`v0.9.0-rc1`, `v0.9.0`.
+mangles the suffix back to `~rc1` for Debian ordering). The tags
+`v0.1.0-placeholder2` and `v0.2.0-placeholder` mark PPA states;
+`v0.9.0-rc1` and `v0.9.0` mark gated commits that were never
+published. `release.yml` fires on any `v*` tag.
 
 Notes for the Launchpad build environment:
 
 - builders have no `/sys/kernel/btf/vmlinux`; the checked-in
-  `src/backends/ebpf/vmlinux/x86_64/vmlinux.h` fallback (selected by
-  `scripts/gen-vmlinux.sh`) is what keeps `-Dwith_ebpf=enabled`
+  `src/backends/ebpf/vmlinux/<arch>/vmlinux.h` fallbacks (selected by
+  `scripts/gen-vmlinux.sh`) are what keep `-Dwith_ebpf=enabled`
   building there — test the masked-BTF path before uploading.
-- a `jammy` (22.04) series build downgrades eBPF at configure time
-  (libbpf 0.5 < 0.8); the binary stays schema-compatible per ADR-0003.
-- before the first upload, sweep the `intp` namespace (Debian, Ubuntu,
-  Launchpad, AUR, COPR, nixpkgs); fallback name `intp-profiler`.
+- `jammy` (22.04) cannot build eBPF from its archive (libbpf 0.5 <
+  0.8, no standalone `bpftool`, and Launchpad resolves only the first
+  alternative of a Build-Depends entry). `make-source-package.sh`
+  applies a jammy variant to its temporary `debian/` copy: no clang,
+  bpftool or libbpf-dev, and `-Dwith_ebpf=disabled`. The binary stays
+  schema-compatible per ADR-0003.
 
 ---
 
