@@ -109,12 +109,58 @@ model family:
   (`softirq_byteshare_proxy`, status PROXY) — divergent **by design**
   from the system-wide softirq figure; parity tooling exempts it.
 - **llcocc**'s `proxy_from_miss_ratio` fallback is directional-only
-  (status PROXY), never comparable to occupancy bytes.
+  (status PROXY), never comparable to occupancy bytes, and never
+  counted as RDT coverage.
+- **llcmr** reports its counter family as `event_family` in
+  `--print-schema`: `ll_read` (LLC-loads / LLC-load-misses, the
+  canonical host reading), `vendor_raw` (vendor raw codes), or
+  `arch_cache_refs` — the architectural cache-references/misses a KVM
+  guest falls back to when its vPMU refuses the LL-read events. Guest
+  samples on that family carry status DEGRADED and the note
+  `arch_cache_refs`; they rank workloads but are not comparable with
+  a host `llcmr` value.
+- **mbw** is a share of a detected ceiling: uncore_imc channels x
+  configured MT/s x 8 B. `--print-schema` shows `ceiling_bps`,
+  `ceiling_source` and `ceiling_fallback`. When dmidecode cannot run
+  (no root) or reports no speed, the speed defaults to DDR4 2400 MT/s,
+  which can understate a DDR5 host several times; samples then carry
+  the note `ceiling_fallback`. Pass `--mem-bw-max-bps` for absolute
+  claims.
 
 Units: the C API/JSONL/Prometheus carry ratios [0,1]; `tsv-legacy-v1`
 renders integer percent (the frozen IADA contract). Canonical formula
 derivations live in across-intp `docs/METRICS-DEEP-DIVE.md` at the
-freeze commit (see [SYNC.md](../SYNC.md)).
+pinned commit (see [SYNC.md](../SYNC.md)).
+
+### Claim classes
+
+What a reading supports depends on the metric, as established by the
+SBAC-PAD 2026 campaign:
+
+| Metric | Strongest claim |
+| --- | --- |
+| `cpu` | absolute |
+| `llcmr` | directional (rank agreement across variants, not equal values) |
+| `mbw`, `llcocc` | not independently verifiable per task: resctrl gives one RMID per monitoring group, so no second instrument can read the same group at the same time |
+| `blk` | within one semantic model only (see above) |
+| `netp`, `nets` | per the model declared in `--print-schema` |
+
+### Availability inside a KVM guest
+
+Without RDT or a full vPMU in the guest, intp reports what it cannot
+measure instead of emitting zeros:
+
+| Metric | In a KVM guest |
+| --- | --- |
+| `cpu` | available; prefer the procfs backends (`--disable-backend cpu:ebpf_sched`): the eBPF `cpu` backend's in-guest reading depends on the sampling interval |
+| `llcmr` | degraded: `arch_cache_refs` family, directional only |
+| `llcocc` | proxy from the miss ratio, directional only |
+| `mbw` | unavailable (no resctrl MBM) |
+| `netp`, `nets`, `blk` | available, measuring the guest's virtual devices |
+
+The experimental portable set (`--experimental --portable-metrics`,
+[PLUGINS.md](PLUGINS.md)) exists for this case: its signals stay
+observable inside a guest.
 
 ---
 
@@ -147,8 +193,15 @@ The full hardware compatibility matrix is in
 - **Per-PID** mode: `intp -p <pid>` or `intp -p $(pgrep -f my-app)`.
   Uses `/proc/<pid>/stat`, PID-attached `perf_event_open`, and a
   per-PID resctrl `mon_group`.
-- **Per-cgroup** mode (post-1.0): `intp -c /sys/fs/cgroup/<path>`.
-  Uses cgroup-aware `perf_event_open` and the cgroup's resctrl group.
+- **Per-cgroup** mode: `intp -c /sys/fs/cgroup/<path>` (alias
+  `--target-container`). Uses cgroup-aware `perf_event_open` and a
+  shared resctrl group for the target. The PID set is read over the
+  whole cgroup subtree, so container layouts whose top cgroup holds no
+  processes (Incus `.lxc`, systemd `init.scope`) are attributed to the
+  container rather than falling back to system-wide counting.
+- **Cadence:** low-rate event counts and miss-derived signals under CPU
+  oversubscription lose fidelity at multi-second intervals; keep the
+  interval at or below 1 s when those metrics matter.
 
 The per-PID resctrl plumbing is the trickiest part because resctrl
 groups are mutually exclusive — a PID can be in exactly one
