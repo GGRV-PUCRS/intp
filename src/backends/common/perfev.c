@@ -188,7 +188,7 @@ int perfev_open_llc_cache(pid_t pid, int *fd_loads, int *fd_misses)
 		errno = saved;
 		return -1;
 	}
-	return 0;
+	return PERFEV_LLC_ARCH;
 }
 
 /* Open a perf event in cgroup mode: counts events for tasks in <cgroup_fd>
@@ -274,7 +274,7 @@ int perfev_open_llc_cache_cgroup(int cgroup_fd, int cpu, int *fd_loads,
 		errno = saved;
 		return -1;
 	}
-	return 0;
+	return PERFEV_LLC_ARCH;
 }
 
 /* Read /sys/devices/<pmu>/type as an integer (perf event type for that PMU). */
