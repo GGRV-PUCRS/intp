@@ -2,7 +2,7 @@
 /*
  * test_detect.c — minimal sanity checks for detect.c.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/tests/test-detect.c @ 2e87b30fc762
  *
  * These tests run on whatever system is doing the build; they assert

@@ -2,7 +2,7 @@
 
 `intp` is the production line; **across-intp** (the working name of
 the comparison/research monorepo, `github.com/Saccilotto/across-local-intp`,
-publicly referenced as `intp-comparison`) is the experiment harness
+publicly referenced as `across-intp`) is the experiment harness
 where the measured variants, the benchmark campaigns, and the papers
 live.
 

@@ -2,7 +2,7 @@
 /*
  * perfev.c — perf_event_open wrappers and uncore PMU helpers.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/perfev.c @ 2e87b30fc762
  *
  * Uncore PMUs require root or perf_event_paranoid <= -1. The wrappers

@@ -3,7 +3,7 @@
 #
 # run-gates.sh — the four release gates over a small solo campaign.
 #
-# Reduced port of the intp-comparison campaign driver
+# Reduced port of the across-intp campaign driver
 # (bench/run-intp-bench.sh @ 2e87b30fc762): solo stage + overhead stage
 # only, one binary under test, then the gate analyzers:
 #

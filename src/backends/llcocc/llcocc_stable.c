@@ -2,7 +2,7 @@
 /*
  * llcocc_stable.c — LLC occupancy, two backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/llcocc.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker

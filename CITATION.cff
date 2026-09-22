@@ -7,7 +7,7 @@ abstract: >
   hardware counters to quantify how co-located workloads interfere
   through shared CPU, last-level cache, memory bandwidth, block I/O, and
   network resources. It is the production successor to the seven-way
-  comparison harness in intp-comparison, packaged for distro adoption
+  comparison harness in across-intp, packaged for distro adoption
   and built around a stable plugin ABI for hardware (GPU, accelerator),
   application (database, vector store), observability (Prometheus, OTel),
   and scheduler (Kubernetes, SLURM, IADA) extensions.
@@ -30,7 +30,7 @@ keywords:
   - observability
 version: "0.1.0-dev"
 # 1.0.0 is reserved for the first stable, distro-packageable release.
-# Until then, citing the comparison repo (intp-comparison) remains the
+# Until then, citing the comparison repo (across-intp) remains the
 # canonical reference. The MsC dissertation (defense expected March 2027)
 # will become the academic citation once published:
 # preferred-citation:

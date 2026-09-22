@@ -2,7 +2,7 @@
 /*
  * detect.h — hardware and environment capability detection for V2.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/detect.h @ 2e87b30fc762
  *
  * Detection is read-only (cpuinfo, sysfs, /proc, optional dmidecode).

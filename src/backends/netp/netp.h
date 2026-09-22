@@ -2,7 +2,7 @@
 /*
  * netp.h — netp backend public test helper.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/backend.h @ 2e87b30fc762
  *   (the "Public helpers shared with the unit tests" declaration of
  *   netp_resolve_speed, moved here so -Wmissing-prototypes passes).

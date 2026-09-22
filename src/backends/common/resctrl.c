@@ -2,7 +2,7 @@
 /*
  * resctrl.c — monitoring group lifecycle and counter aggregation.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/resctrl.c @ 2e87b30fc762
  *
  * Every backend that uses resctrl (mbw, llcocc) goes through this module.

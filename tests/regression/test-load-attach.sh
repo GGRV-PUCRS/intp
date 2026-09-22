@@ -5,7 +5,7 @@
 # programs load and attach, let it run briefly, check no programs leak,
 # confirm the JSONL output is well-formed.
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   variants/v3.3-ebpf-core-cgroup/tests/integration/test-load-attach.sh
 #   @ 2e87b30fc762
 # adapted to invoke the intp binary (path in $1 or INTP_BIN) and to its

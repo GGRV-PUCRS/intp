@@ -9,8 +9,8 @@ to track kernel evolution and to harmonise across variants.
 This document is the canonical, slim reference. The deep, line-by-line
 walkthrough — kernel probes, normalisation formulas, hardware
 constants, kernel-version specifics — lives in
-[`intp-comparison/docs/METRICS-DEEP-DIVE.md`](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/METRICS-DEEP-DIVE.md)
-and [`intp-comparison/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/intp-comparison/blob/main/METRICS-ALIGNMENT.md).
+[`across-intp/docs/METRICS-DEEP-DIVE.md`](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md)
+and [`across-intp/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/across-intp/blob/main/METRICS-ALIGNMENT.md).
 Treat those as the source of truth; this document is the index.
 
 ---
@@ -87,7 +87,7 @@ The shipped chains (backend ids as reported by `--list-backends`):
 | cpu    | `ebpf_sched` → `cgroup` (cpu.stat) → `procfs_pid` → `procfs_system`     |
 
 When an eBPF backend wins, fidelity matches the measured v3.3 endpoint
-in `intp-comparison`. When it loses (eBPF disabled at build time, BTF
+in `across-intp`. When it loses (eBPF disabled at build time, BTF
 absent, kernel < 5.8, missing capability), the stable-ABI chain takes
 over and matches v2.1.
 
@@ -128,12 +128,12 @@ freeze commit (see [SYNC.md](../SYNC.md)).
 | ARM Neoverse     | PMU `LLC_*` events; vendor uncore varies                       | `LL_CACHE_MISS_RD` / similar | MPAM (where supported)                   |
 | Other / older    | metric reported as unavailable; not silently zeroed            | reported as unavailable      | reported as unavailable                  |
 
-`tools/intp-detect.sh` (ported from `intp-comparison/shared/intp-detect.sh`)
+`tools/intp-detect.sh` (ported from `across-intp/shared/intp-detect.sh`)
 is the single source of truth for hardware capability probing. It
 emits a shell-sourceable file that the build and runtime read.
 
 The full hardware compatibility matrix is in
-[`intp-comparison/docs/HARDWARE-COMPATIBILITY.md`](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/HARDWARE-COMPATIBILITY.md).
+[`across-intp/docs/HARDWARE-COMPATIBILITY.md`](https://github.com/ggrv-intp/across-intp/blob/main/docs/HARDWARE-COMPATIBILITY.md).
 
 ---
 
@@ -158,10 +158,10 @@ groups are mutually exclusive — a PID can be in exactly one
 
 ---
 
-## Cross-variant equivalence (heritage from `intp-comparison`)
+## Cross-variant equivalence (heritage from `across-intp`)
 
 The metric definitions above are the *aligned* ones documented in
-[`intp-comparison/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/intp-comparison/blob/main/METRICS-ALIGNMENT.md).
+[`across-intp/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/across-intp/blob/main/METRICS-ALIGNMENT.md).
 That file documents the small patches applied across variants to
 harmonise post-kernel-6.8 behaviour:
 
@@ -178,7 +178,7 @@ harmonise post-kernel-6.8 behaviour:
   hardcoded constants are documented but not used.
 
 `tests/regression/` ports the cross-variant equivalence harness from
-`intp-comparison/shared/validate-cross-variant.sh` so we can keep the
+`across-intp/shared/validate-cross-variant.sh` so we can keep the
 alignment honest as the codebase evolves.
 
 ---

@@ -245,7 +245,7 @@ static const struct option long_opts[] = {
 };
 
 /* Parse "metric:backend_id" for --force-backend (ported parse_force
- * from intp-comparison intp-hybrid.c @ 2e87b30fc762). */
+ * from across-intp intp-hybrid.c @ 2e87b30fc762). */
 static int parse_force(const char *spec, struct intp_core_force *out)
 {
 	const char *colon = strchr(spec, ':');

@@ -4,7 +4,7 @@
 # preflight.sh -- host capability matrix for the intp regression /
 # validation tooling.
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   shared/intp-preflight.sh @ 2e87b30fc762
 # REDUCED to what intp needs: the per-variant v0..v3.3 BUILD/RUN verdict
 # logic and the SystemTap/debuginfo/bench-env checks are dropped; the

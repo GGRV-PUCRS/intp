@@ -10,7 +10,7 @@
 # intp's eBPF backends inherit v3.3's counter-map design (no userspace
 # draining loop), so they must clear this gate.
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   variants/v3.3-ebpf-core-cgroup/tests/integration/
 #   test-no-ctxsw-amplification.sh @ 2e87b30fc762
 # adapted to invoke the intp binary (path in $1 or INTP_BIN). The

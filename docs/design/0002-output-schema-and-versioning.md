@@ -8,7 +8,7 @@
 
 ## Context
 
-`intp-comparison/`'s seven variants all emit the same 7-column TSV.
+`across-intp/`'s seven variants all emit the same 7-column TSV.
 That format is the existing integration contract with IADA, the
 dissertation plotting code, and the Meyer-CSV converter. Breaking it
 breaks every downstream consumer.
@@ -64,7 +64,7 @@ integrations should target it.
 
 ### Legacy format: 7-column TSV (`--format tsv-legacy-v1`)
 
-Bit-for-bit compatible with `intp-comparison`. Tab-separated, integer
+Bit-for-bit compatible with `across-intp`. Tab-separated, integer
 percentages 0–99, no header line. This is what IADA, the dissertation
 scripts, and the Meyer-CSV converter consume.
 

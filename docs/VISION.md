@@ -138,7 +138,7 @@ problems for everyone else.
 Today, this repository is a **placeholder** — a public reservation of
 the `intp` name and a forward-looking statement of intent. The
 substance is in
-[`intp-comparison`](https://github.com/ggrv-intp/intp-comparison),
+[`across-intp`](https://github.com/ggrv-intp/across-intp),
 which holds seven actively-developed implementation variants, the
 benchmarks that compare them, and the technical documents that justify
 the design choices.

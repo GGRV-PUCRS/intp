@@ -2,7 +2,7 @@
 /*
  * perfev.h — perf_event_open(2) wrappers used by llcmr and mbw backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/perfev.h @ 2e87b30fc762
  */
 

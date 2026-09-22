@@ -2,7 +2,7 @@
 /*
  * test_procutil.c — exercise procutil parsers against the live /proc.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/tests/test-procutil.c @ 2e87b30fc762
  * adapted to the in-tree assertion macros and struct-tag type names.
  */

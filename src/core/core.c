@@ -3,7 +3,7 @@
  * core.c — context lifecycle (open/close), target resolution, schema
  * construction, and the JSON schema dump behind intp_print_schema().
  *
- * Target resolution ported from intp-comparison:
+ * Target resolution ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (cgroup targets resolve their member PIDs from cgroup.procs at open
  * time; PID targets bind directly).

@@ -4,7 +4,7 @@
 # validate-attribution.sh -- ground-truth validation of intp's per-cgroup
 # attribution (-c / --cgroup).
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/validate-attribution.sh @ 2e87b30fc762
 # adapted to the intp CLI (tsv-legacy-v1 parsing instead of the v2.1 JSON
 # output) and REDUCED to plain cgroup-v2 legs: the LXD/Incus container
