@@ -1,7 +1,8 @@
 # Regression & validation tooling — execution scoping
 
 Ported from the across-intp harness (`shared/`, `bench/`) at the
-freeze commit `2e87b30fc762` (see [SYNC.md](../../SYNC.md)). Three
+freeze commit `2e87b30fc762`, audited at the `v0.2.0` pin (see
+[SYNC.md](../../SYNC.md)). Three
 execution tiers; nothing here runs in CI.
 
 ## What runs where
