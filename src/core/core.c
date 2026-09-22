@@ -380,8 +380,7 @@ const char *intp_core_metric_help(const char *name)
 	if (!g_open_ctx || !name)
 		return "";
 
-	const struct intp_metric_schema *s =
-		intp_schema_find(g_open_ctx, name);
+	const struct intp_metric_schema *s = intp_schema_find(g_open_ctx, name);
 
 	return (s && s->description) ? s->description : "";
 }

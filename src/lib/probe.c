@@ -9,18 +9,19 @@
  * the sampling loop is committed.
  */
 
-#include <errno.h>
-
 #include <intp/intp.h>
 #include <intp/version.h>
 
+#include <errno.h>
+
 #if INTP_HAVE_EBPF
-#include <bpf/libbpf.h>
 #include <linux/bpf.h>
+
+#include <bpf/libbpf.h>
 #endif
 
-__attribute__((visibility("default")))
-enum intp_probe_result intp_probe_ebpf(void)
+__attribute__((visibility("default"))) enum intp_probe_result
+intp_probe_ebpf(void)
 {
 #if INTP_HAVE_EBPF
 	/* Silence libbpf's stderr chatter; the caller translates the

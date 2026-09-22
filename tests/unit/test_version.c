@@ -7,10 +7,10 @@
  * non-empty, looks like X.Y.Z (with optional prerelease suffix).
  */
 
+#include <intp/intp.h>
+
 #include <ctype.h>
 #include <string.h>
-
-#include <intp/intp.h>
 
 #include "intp_test.h"
 
@@ -28,7 +28,7 @@ static int looks_like_semver(const char *s)
 				return 0;
 		} else if (*s == '-' || *s == '+' ||
 			   isalpha((unsigned char)*s)) {
-			break;	/* prerelease/build suffix */
+			break; /* prerelease/build suffix */
 		} else {
 			return 0;
 		}

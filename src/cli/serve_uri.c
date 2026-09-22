@@ -31,7 +31,8 @@ int intp_parse_serve_uri(const char *arg, struct intp_serve_target *out)
 		return 0; /* bare "prometheus" -> loopback:9100 */
 
 	if (!(rest[0] == ':' && rest[1] == '/' && rest[2] == '/')) {
-		fprintf(stderr, "intp: malformed --serve argument: %s\n", proto);
+		fprintf(stderr, "intp: malformed --serve argument: %s\n",
+			proto);
 		return -1;
 	}
 	rest += 3; /* skip "://" */

@@ -32,16 +32,16 @@ extern "C" {
 /* Core metric names                                                         */
 /* ------------------------------------------------------------------------ */
 
-#define INTP_METRIC_NETP	"system.interference.netp"
-#define INTP_METRIC_NETS	"system.interference.nets"
-#define INTP_METRIC_BLK		"system.interference.blk"
-#define INTP_METRIC_MBW		"system.interference.mbw"
-#define INTP_METRIC_LLCMR	"system.interference.llcmr"
-#define INTP_METRIC_LLCOCC	"system.interference.llcocc"
-#define INTP_METRIC_CPU		"system.interference.cpu"
+#define INTP_METRIC_NETP   "system.interference.netp"
+#define INTP_METRIC_NETS   "system.interference.nets"
+#define INTP_METRIC_BLK	   "system.interference.blk"
+#define INTP_METRIC_MBW	   "system.interference.mbw"
+#define INTP_METRIC_LLCMR  "system.interference.llcmr"
+#define INTP_METRIC_LLCOCC "system.interference.llcocc"
+#define INTP_METRIC_CPU	   "system.interference.cpu"
 
 /* Convenient list for iteration. */
-#define INTP_CORE_METRICS_COUNT	7
+#define INTP_CORE_METRICS_COUNT 7
 
 extern const char *const intp_core_metric_names[INTP_CORE_METRICS_COUNT];
 
@@ -51,8 +51,8 @@ extern const char *const intp_core_metric_names[INTP_CORE_METRICS_COUNT];
 
 enum intp_unit {
 	INTP_UNIT_UNSPECIFIED = 0,
-	INTP_UNIT_RATIO,	/* fractional [0.0, 1.0] */
-	INTP_UNIT_PERCENT,	/* integer or fractional [0, 100] */
+	INTP_UNIT_RATIO,   /* fractional [0.0, 1.0] */
+	INTP_UNIT_PERCENT, /* integer or fractional [0, 100] */
 	INTP_UNIT_BYTES,
 	INTP_UNIT_BYTES_PER_SECOND,
 	INTP_UNIT_OPS_PER_SECOND,
@@ -60,7 +60,7 @@ enum intp_unit {
 	INTP_UNIT_MICROSECONDS,
 	INTP_UNIT_MILLISECONDS,
 	INTP_UNIT_SECONDS,
-	INTP_UNIT_COUNT,	/* monotonic counter */
+	INTP_UNIT_COUNT, /* monotonic counter */
 };
 
 const char *intp_unit_name(enum intp_unit u);
@@ -70,19 +70,19 @@ const char *intp_unit_name(enum intp_unit u);
 /* ------------------------------------------------------------------------ */
 
 enum intp_value_kind {
-	INTP_VALUE_NONE = 0,	/* metric unavailable on this host */
+	INTP_VALUE_NONE = 0, /* metric unavailable on this host */
 	INTP_VALUE_DOUBLE,
 	INTP_VALUE_INT64,
 	INTP_VALUE_UINT64,
 };
 
 struct intp_metric_value {
-	const char         *name;	/* fully-qualified, e.g. "system.interference.cpu" */
-	enum intp_unit      unit;
+	const char *name; /* fully-qualified, e.g. "system.interference.cpu" */
+	enum intp_unit unit;
 	enum intp_value_kind kind;
 	union {
-		double   d;
-		int64_t  i64;
+		double d;
+		int64_t i64;
 		uint64_t u64;
 	};
 };
@@ -99,10 +99,10 @@ struct intp_metric_value {
  * call on the same context.
  */
 struct intp_sample {
-	struct timespec               ts;	/* wall-clock time of sample end */
-	const char                   *host;	/* host identifier (hostname / nodename) */
+	struct timespec ts; /* wall-clock time of sample end */
+	const char *host;   /* host identifier (hostname / nodename) */
 	const struct intp_metric_value *values;
-	size_t                         values_len;
+	size_t values_len;
 };
 
 /**

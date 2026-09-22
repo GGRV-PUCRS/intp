@@ -1,0 +1,5 @@
+# Byte-frozen port of the across-intp v3.3 BPF program (see SYNC.md).
+src/backends/ebpf/intp_agg.bpf.c
+src/backends/ebpf/intp_agg.bpf.h
+# Generated BTF dumps (bpftool btf dump ... format c).
+src/backends/ebpf/vmlinux/*/vmlinux.h
