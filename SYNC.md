@@ -11,7 +11,7 @@ entries to `docs/DECISIONS-container.md`, `S` entries to
 
 ## The contract: pinned re-sync
 
-- **Current pin:** across-intp **`ce6600259a41`**, tag `v0.2.0`
+- **Current pin:** across-intp **`24f26e5a5df1`**, tag `v0.2.0`
   (2026-09-22), recorded in [ADR-0012](docs/design/0012-resync-across-intp.md)
   and across-intp D15.
 - **History:** the first port was a one-way freeze at **`2e87b30fc762`**
@@ -41,7 +41,7 @@ architectural-cache `llcmr` fallback as degraded, and reports where the
 
 Origins are paths in across-intp. Each was first ported at
 `2e87b30fc762` and audited unchanged-or-back-ported at the pin
-`ce6600259a41` (ADR-0012).
+`24f26e5a5df1` (ADR-0012).
 
 | intp | across-intp origin |
 |---|---|
