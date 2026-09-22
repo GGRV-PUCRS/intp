@@ -1,5 +1,5 @@
 .\" SPDX-License-Identifier: MIT
-.TH INTP 1 "June 2026" "intp" "User Commands"
+.TH INTP 1 "September 2026" "intp" "User Commands"
 .SH NAME
 intp \- Linux interference profiler
 .SH SYNOPSIS
@@ -161,9 +161,16 @@ namespace:
 .B schedlat
 (run-queue/scheduling latency),
 .B psi_mem
-(PSI memory pressure),
+(PSI memory-capacity pressure; it does not register memory-bandwidth
+saturation, so never read it as a bandwidth signal),
 .B membw_est
-(DRAM-bandwidth estimate, bytes/s),
+(DRAM-bandwidth estimate, bytes/s; on network-heavy targets it also
+counts the cache misses of intp's own eBPF network hooks, so treat it as
+uncorroborated when
+.B mbw
+and
+.B llcmr
+read near zero),
 .B psi_io
 (PSI I/O pressure),
 .B schedthr
@@ -182,7 +189,7 @@ output;
 .B tsv\-legacy\-v1
 keeps emitting exactly the seven frozen columns.
 .SH EXPERIMENTAL FEATURES
-Capabilities whose validation campaign has not yet run ship behind a
+Capabilities whose validation verdicts are not yet final ship behind a
 deliberate fence (ADR-0008): they refuse to start without
 .B \-\-experimental
 and exit with status 2, naming what is unvalidated. Currently fenced:
@@ -191,8 +198,8 @@ and exit with status 2, naming what is unvalidated. Currently fenced:
 .B \-\-portable\-metrics
 (the
 .B system.portable.*
-metric set), both pending the C26/C27 validation campaign on the RDT
-testbed.
+metric set), both pending the final verdicts of the portable-metrics
+campaign (across-intp C26, C27; ADR-0012).
 .PP
 Every metric in
 .B \-\-print\-schema
@@ -253,7 +260,19 @@ Profile one process, forcing the resctrl memory-bandwidth backend:
 .BR pidstat (1),
 .BR iostat (1)
 .PP
-Full documentation: https://github.com/ggrv\-intp/intp
+Research repository and artifacts:
+.br
+https://github.com/ggrv\-intp/across\-intp
+.PP
+A. Sacilotto, M. G. Xavier, S. Becker, C. A. F. De Rose, O. Kao,
+"Cross-Application Interference Profiling in Consolidated Cloud
+Servers: Improving Portability, Overhead and Fidelity in IntP",
+SBAC-PAD 2026, to appear.
+.PP
+M. G. Xavier, C. H. C. Cano, V. Meyer, C. A. F. De Rose, "IntP:
+Quantifying cross-application interference via system-level
+instrumentation", SBAC-PAD 2022, pp. 231\(en240,
+doi:10.1109/SBAC\-PAD55451.2022.00034.
 .SH AUTHORS
-Based on IntP (Xavier & De Rose, SBAC-PAD 2022) and its
+Based on IntP (Xavier et al., SBAC-PAD 2022) and its
 modernization in the across-intp research repository (PUCRS).
