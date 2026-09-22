@@ -11,7 +11,9 @@ Files: src/backends/ebpf/vmlinux/*
 Copyright: 1991-2026 Linux kernel contributors
 License: GPL-2.0-only
 Comment: Generated BTF type dump derived from the running Linux kernel
- (bpftool btf dump file vmlinux format c). As a kernel-derived work it is
+ (bpftool btf dump file vmlinux format c); the aarch64 dump comes from the
+ BTF embedded in Ubuntu's linux-image-unsigned-6.8.0-139-generic arm64
+ kernel. As a kernel-derived work it is
  distributed under GPL-2.0-only. It is a build-time CO-RE input only; it is
  not linked into libintp0 or the intp binary.
 
