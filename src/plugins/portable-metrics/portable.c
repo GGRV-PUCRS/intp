@@ -775,8 +775,7 @@ static int mb_cg_init(void)
 	for (int cpu = 0; cpu < (int)ncpu; cpu++) {
 		int loads = -1, miss = -1;
 
-		if (perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss) !=
-		    0) {
+		if (perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss) < 0) {
 			mb.fd_miss[cpu] = -1;
 			continue;
 		}
@@ -814,7 +813,7 @@ static int mb_hw_init(void)
 		pid_t pid = t->n_pids > 0 ? t->pids[i] : -1;
 		int loads = -1, miss = -1;
 
-		if (perfev_open_llc_cache(pid, &loads, &miss) != 0) {
+		if (perfev_open_llc_cache(pid, &loads, &miss) < 0) {
 			mb_free();
 			return -1;
 		}

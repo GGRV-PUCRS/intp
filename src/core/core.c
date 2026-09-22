@@ -316,6 +316,11 @@ static void json_escape(FILE *f, const char *s)
 	}
 }
 
+/* Defined in the llcmr backend: "ll_read", "arch_cache_refs",
+ * "vendor_raw", or NULL when no perf counter is open. */
+extern const char *intp_llcmr_event_family(void);
+
+
 static const char *target_kind_str(const struct intp_ctx *ctx)
 {
 	switch (ctx->opts.target.kind) {
@@ -425,6 +430,10 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 				b->model ? b->model : "unspecified");
 			fprintf(f, "      \"scope\": \"%s\",\n",
 				b->scope ? b->scope : "system");
+			if (strcmp(intp_core_metric_short_names[m], "llcmr") == 0 &&
+			    intp_llcmr_event_family())
+				fprintf(f, "      \"event_family\": \"%s\",\n",
+					intp_llcmr_event_family());
 		}
 		fprintf(f, "      \"rejected\": [");
 		for (int r = 0; r < sel->n_rejected; r++) {
