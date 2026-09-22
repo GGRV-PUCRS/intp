@@ -775,7 +775,9 @@ static int mb_cg_init(void)
 	for (int cpu = 0; cpu < (int)ncpu; cpu++) {
 		int loads = -1, miss = -1;
 
-		if (perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss) < 0) {
+		int rc = perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss);
+
+		if (rc < 0) {
 			mb.fd_miss[cpu] = -1;
 			continue;
 		}

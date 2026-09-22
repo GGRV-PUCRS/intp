@@ -91,9 +91,10 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 		 * ".lxc", systemd init.scope) lists no PIDs at its top,
 		 * and an empty set sends per-task backends such as
 		 * llcmr perf_hwcache to system-wide counting. Same walk
-		 * as v3.3 read_cgroup_pids_rec (cutting-edge-intp D15). */
-		t->n_pids = procutil_read_cgroup_procs_rec(
-			t->cgroup_path, t->pids, INTP_CORE_MAX_PIDS);
+		 * as v3.3 read_cgroup_pids_rec (across-intp D15). */
+		t->n_pids =
+			procutil_read_cgroup_procs_rec(t->cgroup_path, t->pids,
+						       INTP_CORE_MAX_PIDS);
 		break;
 	case INTP_TARGET_VM:
 		/* VM netp comes from the host-side tap iface; the other
@@ -321,7 +322,7 @@ static void json_escape(FILE *f, const char *s)
 extern const char *intp_llcmr_event_family(void);
 
 /* --print-schema: the mbw normalization ceiling and where it came from,
- * so a fallback ceiling (cutting-edge-intp C34) is visible up front. */
+ * so a fallback ceiling (across-intp C34) is visible up front. */
 static void print_mbw_ceiling(FILE *f, const struct intp_ctx *ctx)
 {
 	long over = ctx->target.mem_bw_max_bps_override;
@@ -449,11 +450,13 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 				b->model ? b->model : "unspecified");
 			fprintf(f, "      \"scope\": \"%s\",\n",
 				b->scope ? b->scope : "system");
-			if (strcmp(intp_core_metric_short_names[m], "llcmr") == 0 &&
-			    intp_llcmr_event_family())
+			const char *metric = intp_core_metric_short_names[m];
+			const char *family = intp_llcmr_event_family();
+
+			if (strcmp(metric, "llcmr") == 0 && family)
 				fprintf(f, "      \"event_family\": \"%s\",\n",
-					intp_llcmr_event_family());
-			if (strcmp(intp_core_metric_short_names[m], "mbw") == 0)
+					family);
+			if (strcmp(metric, "mbw") == 0)
 				print_mbw_ceiling(f, ctx);
 		}
 		fprintf(f, "      \"rejected\": [");

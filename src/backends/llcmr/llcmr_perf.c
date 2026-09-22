@@ -179,7 +179,8 @@ static int generic_read(struct intp_core_sample *out, double interval_sec)
 
 /* Event family behind the active llcmr counters, for --print-schema:
  * "ll_read" (LLC-loads/LLC-load-misses), "arch_cache_refs" (guest vPMU
- * fallback), "vendor_raw" (perf_raw codes), or NULL when no perf-based llcmr backend is initialised. */
+ * fallback), "vendor_raw" (perf_raw codes), or NULL when no perf-based llcmr
+ * backend is initialised. */
 const char *intp_llcmr_event_family(void);
 const char *intp_llcmr_event_family(void)
 {
