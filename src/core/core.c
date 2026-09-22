@@ -320,6 +320,25 @@ static void json_escape(FILE *f, const char *s)
  * "vendor_raw", or NULL when no perf counter is open. */
 extern const char *intp_llcmr_event_family(void);
 
+/* --print-schema: the mbw normalization ceiling and where it came from,
+ * so a fallback ceiling (cutting-edge-intp C34) is visible up front. */
+static void print_mbw_ceiling(FILE *f, const struct intp_ctx *ctx)
+{
+	long over = ctx->target.mem_bw_max_bps_override;
+
+	if (over > 0) {
+		fprintf(f, "      \"ceiling_bps\": %ld,\n", over);
+		fprintf(f, "      \"ceiling_source\": \"--mem-bw-max-bps\",\n");
+		return;
+	}
+	fprintf(f, "      \"ceiling_bps\": %ld,\n",
+		detect_memory_bandwidth_max_bps());
+	fprintf(f, "      \"ceiling_source\": \"");
+	json_escape(f, detect_memory_bandwidth_source());
+	fprintf(f, "\",\n");
+	fprintf(f, "      \"ceiling_fallback\": %s,\n",
+		detect_memory_bandwidth_is_fallback() ? "true" : "false");
+}
 
 static const char *target_kind_str(const struct intp_ctx *ctx)
 {
@@ -434,6 +453,8 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 			    intp_llcmr_event_family())
 				fprintf(f, "      \"event_family\": \"%s\",\n",
 					intp_llcmr_event_family());
+			if (strcmp(intp_core_metric_short_names[m], "mbw") == 0)
+				print_mbw_ceiling(f, ctx);
 		}
 		fprintf(f, "      \"rejected\": [");
 		for (int r = 0; r < sel->n_rejected; r++) {
