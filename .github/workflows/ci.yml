@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/**']
 
 permissions:
   contents: read
@@ -219,8 +219,9 @@ jobs:
 
       - name: clang-format
         run: |
+          base="origin/${GITHUB_BASE_REF:-main}"
           mapfile -t files < <(git diff --name-only --diff-filter=AM \
-              origin/main...HEAD -- '*.c' '*.h' || true)
+              "$base"...HEAD -- '*.c' '*.h' || true)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No C/H files changed; skipping."
             exit 0

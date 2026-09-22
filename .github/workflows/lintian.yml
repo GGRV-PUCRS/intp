@@ -2,7 +2,7 @@ name: Debian packaging (lintian)
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/**']
     paths:
       - 'packaging/debian/**'
       - 'meson.build'
