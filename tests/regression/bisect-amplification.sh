@@ -47,7 +47,7 @@ run_arm() { # label intp_args ("-" = skip profiler entirely)
 	if [ "$args" = "-" ]; then
 		# Baseline-only sanity: run the test but point it at
 		# /bin/true so the with-arm adds no profiler.
-		out=$(INTP_ARGS= MAX_RATIO=999 \
+		out=$(INTP_ARGS='' MAX_RATIO=999 \
 			"$HERE/test-no-ctxsw-amplification.sh" /bin/true \
 			2>&1 || true)
 	else

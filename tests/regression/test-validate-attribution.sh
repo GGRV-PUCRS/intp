@@ -23,7 +23,9 @@ set +e   # the harness sets -e; assertions below probe failure paths
 
 WORKDIR=$(mktemp -d -t intp-vtest.XXXXXX)
 trap 'rm -rf "$WORKDIR"' EXIT
-WARMUP=2; IDLE_MAX=5; RATIO_MIN=8; CONSERVE_TOL=0.25
+# Read by the functions of the sourced harness.
+# shellcheck disable=SC2034
+WARMUP=2 IDLE_MAX=5 RATIO_MIN=8 CONSERVE_TOL=0.25
 
 T_PASS=0; T_FAIL=0
 ok()   { printf '  ok   %s\n' "$1"; T_PASS=$((T_PASS+1)); }

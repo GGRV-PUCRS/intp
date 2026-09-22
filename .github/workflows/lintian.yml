@@ -27,7 +27,7 @@ jobs:
           apt-get install -y --no-install-recommends \
               build-essential debhelper devscripts dh-make fakeroot \
               lintian git ca-certificates \
-              meson ninja-build pkg-config clang \
+              meson ninja-build pkg-config clang bpftool \
               libbpf-dev libelf-dev zlib1g-dev libmicrohttpd-dev \
               python3
 
@@ -57,6 +57,8 @@ jobs:
         run: |
           dpkg-buildpackage -us -uc -b -d
           ls -l ../*.deb || true
+          # upload-artifact refuses paths outside the workspace
+          mkdir -p debs && cp ../*.deb debs/ 2>/dev/null || true
 
       - name: Run lintian
         if: steps.precheck.outputs.skipped != 'true'
@@ -77,4 +79,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debs
-          path: ../*.deb
+          path: debs/*.deb

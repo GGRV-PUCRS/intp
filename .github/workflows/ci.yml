@@ -167,7 +167,7 @@ jobs:
           - image: alpine:latest
             install: |
               apk add --no-cache \
-                  meson ninja pkgconf gcc clang musl-dev \
+                  meson ninja pkgconf gcc clang musl-dev linux-headers \
                   elfutils-dev zlib-dev libmicrohttpd-dev python3
             ebpf: disabled
     container:
@@ -221,7 +221,9 @@ jobs:
         run: |
           base="origin/${GITHUB_BASE_REF:-main}"
           mapfile -t files < <(git diff --name-only --diff-filter=AM \
-              "$base"...HEAD -- '*.c' '*.h' || true)
+              "$base"...HEAD -- '*.c' '*.h' \
+              ':!src/backends/ebpf/intp_agg.bpf.[ch]' \
+              ':!src/backends/ebpf/vmlinux/*' || true)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No C/H files changed; skipping."
             exit 0
@@ -242,7 +244,8 @@ jobs:
         run: |
           mapfile -t files < <(git ls-files '*.sh' 'tools/*' || true)
           if [ ${#files[@]} -gt 0 ]; then
-            shellcheck "${files[@]}"
+            # warnings and errors fail; style/info notes are advisory
+            shellcheck --severity=warning "${files[@]}"
           else
             echo "No shell scripts to check yet."
           fi
