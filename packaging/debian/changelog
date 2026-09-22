@@ -16,7 +16,7 @@ intp (0.10.0-1) noble; urgency=medium
   * Source packages are built per series by make-source-package.sh;
     the 22.04 build disables the eBPF backends (libbpf 0.5).
 
- -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Tue, 22 Sep 2026 12:00:00 -0300
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Tue, 22 Sep 2026 00:30:00 -0300
 
 intp (0.9.0-1) noble; urgency=medium
 
