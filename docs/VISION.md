@@ -135,21 +135,16 @@ problems for everyone else.
 
 ## What this repository is, today
 
-Today, this repository is a **placeholder** — a public reservation of
-the `intp` name and a forward-looking statement of intent. The
-substance is in
-[`across-intp`](https://github.com/ggrv-intp/across-intp),
-which holds seven actively-developed implementation variants, the
-benchmarks that compare them, and the technical documents that justify
-the design choices.
+This repository carries the working profiler: the pure-C engine that
+descends from across-intp's v2.1 variant and the eBPF/CO-RE backends
+that descend from v3.3, selected by the SBAC-PAD 2026 comparison and
+packaged for Ubuntu in `ppa:norohim/intp`. The research record — the
+eleven implementation variants, the benchmarks that compare them, and
+the technical documents that justify the design choices — stays in
+[`across-intp`](https://github.com/ggrv-intp/across-intp).
 
-When the comparison converges and a single variant proves itself
-across portability, safety, and fidelity, that variant migrates here,
-gets a `debian/` directory, and starts the long road described in
-[ROADMAP.md](ROADMAP.md).
-
-Until then: the name is reserved, and the work is happening in the
-open next door.
+The road ahead is the one described in [ROADMAP.md](ROADMAP.md): from
+the PPA to Debian, Ubuntu universe and the other distributions.
 
 ---
 
