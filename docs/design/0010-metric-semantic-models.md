@@ -67,6 +67,23 @@ Backends report `ok / degraded / proxy / unavailable` per read
   object stays plain numbers (ADR-0002); per-sample status does not
   pollute the stream.
 
+### 2a. Event family and ceiling provenance (0.10.0, ADR-0012)
+
+Two readings kept their model name but could silently change what they
+measure; both are now selection-time properties in `--print-schema`:
+
+- **llcmr `event_family`**: `ll_read`, `vendor_raw`, or
+  `arch_cache_refs`. The last is the KVM-guest fallback to the
+  architectural cache-references/misses (across-intp C26): same
+  `miss_per_reference` formula, different events. Reads on it report
+  **degraded** with the note `arch_cache_refs`; compare them only with
+  other `arch_cache_refs` readings, and only directionally.
+- **mbw `ceiling_bps` / `ceiling_source` / `ceiling_fallback`**: the
+  denominator of both mbw models and how it was derived. A fallback
+  ceiling (no uncore_imc PMU, or no dmidecode speed) makes the
+  percentage relative, not absolute (across-intp C34); reads carry the
+  note `ceiling_fallback` unless `--mem-bw-max-bps` overrides it.
+
 ### 3. Units: ratio in the schema-facing surfaces, percent in legacy
 
 - The `system.interference.*` values are **ratios [0,1]** in the C API
