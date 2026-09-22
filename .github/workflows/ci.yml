@@ -208,6 +208,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Version sources agree
+        run: scripts/check-versions.sh
+
       - name: Install lint dependencies
         run: |
           sudo apt-get update
