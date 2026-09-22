@@ -23,14 +23,14 @@ so later syncs have a baseline.
 ## Decision
 
 **1. Pin.** intp 0.10.0 is synced with across-intp
-**`ce6600259a41`** (tagged `v0.2.0`, across-intp D15). The freeze commit
+**`24f26e5a5df1`** (tagged `v0.2.0`, across-intp D15). The freeze commit
 `2e87b30fc762` stays the origin named in each file's provenance header:
 no ported file was re-ported from the pin, because the audit below found
 nothing new to take.
 
 **2. Audit.** Every row of the SYNC.md provenance map was diffed between
 the freeze and the pin
-(`git diff 2e87b30fc762 ce6600259a41 -- <origin paths>`), then against
+(`git diff 2e87b30fc762 24f26e5a5df1 -- <origin paths>`), then against
 intp. Upstream changed the ported origins in five commits only.
 
 | Upstream change | Origin | intp state | Action |

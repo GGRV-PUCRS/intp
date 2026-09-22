@@ -261,7 +261,7 @@ SystemTap baseline faithful to the 2022 probe set, and selected their
 per-cgroup versions, v2.1 and v3.3, as this tree's two engines, with
 profiler overhead within ±3 % on CPU and memory reference loads. The
 deployment study that followed (containers and a KVM guest; JSA
-manuscript, submitted) set the rules intp now applies inside guests:
+manuscript, in preparation) set the rules intp now applies inside guests:
 metrics that depend on RDT read unavailable, the `llcocc` miss-ratio
 proxy and the architectural-cache `llcmr` fallback are labelled as
 such, and the portable set stays behind `--experimental` until its

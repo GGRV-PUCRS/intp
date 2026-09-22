@@ -13,7 +13,7 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [0.10.0] — 2026-09-22
 
-Re-synced with across-intp `v0.2.0` (commit `ce6600259a41`; ADR-0012)
+Re-synced with across-intp `v0.2.0` (commit `24f26e5a5df1`; ADR-0012)
 and the first release published to `ppa:norohim/intp`, for Ubuntu
 22.04, 24.04 and 26.04 on amd64 and arm64. The research repository is
 now named across-intp throughout (formerly intp-comparison).

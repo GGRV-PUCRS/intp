@@ -47,7 +47,7 @@ checked before Stage 3 begins.
 > higher-priority acceleration backends — the hybrid ADR-0003
 > anticipated. See SYNC.md for the provenance and the current pin
 > (across-intp `v0.2.0`, ADR-0012). The follow-up deployment study
-> (containers and a KVM guest, JSA manuscript, submitted) is what
+> (containers and a KVM guest, JSA manuscript, in preparation) is what
 > shaped 0.10.0's guest semantics: unavailable rather than zero where
 > RDT is missing, proxies and fallback event families labelled as such.
 
