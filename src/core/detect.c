@@ -560,10 +560,19 @@ long detect_llc_size_bytes(void)
 	return best_bytes;
 }
 
+/* How the last detect_memory_bandwidth_max_bps() call derived its value.
+ * The DDR4 speed default is what produced the 42656 MB/s ceiling in the
+ * banked cross-deployment campaign (cutting-edge-intp C34): a silent
+ * fallback there understates the ceiling ~6x on a DDR5 host, so it is
+ * recorded and surfaced, not hidden. */
+static char g_mbw_source[128];
+static int g_mbw_fallback;
+
 long detect_memory_bandwidth_max_bps(void)
 {
 	/* 1. Count IMC channels via sysfs -- does not require root */
 	int n_imc = 0;
+	int imc_fallback = 0;
 	DIR *d = opendir("/sys/devices");
 
 	if (d) {
@@ -574,8 +583,10 @@ long detect_memory_bandwidth_max_bps(void)
 				n_imc++;
 		closedir(d);
 	}
-	if (n_imc <= 0)
+	if (n_imc <= 0) {
 		n_imc = 2; /* conservative fallback */
+		imc_fallback = 1;
+	}
 
 	/* 2. Configured speed via dmidecode (requires root) */
 	long speed_mt = 0;
@@ -589,20 +600,55 @@ long detect_memory_bandwidth_max_bps(void)
 			while (fgets(line, sizeof(line), f)) {
 				long v = 0;
 
-				if (sscanf(line,
-					   " Configured Memory Speed: %ld MT/s",
-					   &v) == 1 &&
+				/* "Configured Clock Speed" is the label
+				 * dmidecode < 3.1 printed for the same
+				 * field. */
+				if ((sscanf(line,
+					    " Configured Memory Speed: %ld MT/s",
+					    &v) == 1 ||
+				     sscanf(line,
+					    " Configured Clock Speed: %ld MT/s",
+					    &v) == 1) &&
 				    v > speed_mt)
 					speed_mt = v;
 			}
 			pclose(f);
 		}
 	}
-	if (speed_mt <= 0)
+	int speed_fallback = 0;
+
+	if (speed_mt <= 0) {
 		speed_mt = 2400; /* conservative DDR4 default */
+		speed_fallback = 1;
+	}
+
+	g_mbw_fallback = imc_fallback || speed_fallback;
+	snprintf(g_mbw_source, sizeof(g_mbw_source),
+		 "%d IMC channels (%s) x %ld MT/s (%s) x 8 B", n_imc,
+		 imc_fallback ? "default, no uncore_imc PMU" : "uncore_imc",
+		 speed_mt,
+		 speed_fallback ? (geteuid() == 0 ? "DDR4 default, dmidecode "
+						    "gave no speed"
+						  : "DDR4 default, dmidecode "
+						    "needs root")
+				: "dmidecode");
 
 	/* 3. bandwidth = n_imc * speed_MT/s * 10^6 * 8 bytes */
 	return (long)n_imc * speed_mt * 1000000L * 8L;
+}
+
+const char *detect_memory_bandwidth_source(void)
+{
+	if (!g_mbw_source[0])
+		(void)detect_memory_bandwidth_max_bps();
+	return g_mbw_source;
+}
+
+int detect_memory_bandwidth_is_fallback(void)
+{
+	if (!g_mbw_source[0])
+		(void)detect_memory_bandwidth_max_bps();
+	return g_mbw_fallback;
 }
 
 const char *detect_default_iface(void)
@@ -850,5 +896,9 @@ void print_capabilities(const system_capabilities_t *c, FILE *out)
 	fprintf(out, "  default disk    %s\n",
 		c->default_disk[0] ? c->default_disk : "(none)");
 	fprintf(out, "  LLC size        %ld bytes\n", c->llc_size_bytes);
-	fprintf(out, "  mem BW max      %ld bytes/sec\n", c->mem_bw_max_bps);
+	fprintf(out, "  mem BW max      %ld bytes/sec (%s%s)\n", c->mem_bw_max_bps,
+		detect_memory_bandwidth_source(),
+		detect_memory_bandwidth_is_fallback()
+			? "; fallback, pass --mem-bw-max-bps"
+			: "");
 }
