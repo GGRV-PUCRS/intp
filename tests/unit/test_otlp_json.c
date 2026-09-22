@@ -6,16 +6,16 @@
  * pure (no libcurl), so this runs in every build.
  */
 
-#include "intp_test.h"
-#include "otlp_json.h"
-
 #include <intp/metrics.h>
 
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define HAS(hay, needle) INTP_EXPECT(strstr((hay), (needle)) != NULL)
+#include "intp_test.h"
+#include "otlp_json.h"
+
+#define HAS(hay, needle)   INTP_EXPECT(strstr((hay), (needle)) != NULL)
 #define HASNT(hay, needle) INTP_EXPECT(strstr((hay), (needle)) == NULL)
 
 int main(void)

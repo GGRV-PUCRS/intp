@@ -24,8 +24,8 @@ static inline FILE *intp_test_fixture_open(const char *relpath)
 	if (!root)
 		root = "tests/fixtures";
 
-	if (snprintf(buf, sizeof(buf), "%s/%s", root, relpath)
-	    >= (int)sizeof(buf))
+	if (snprintf(buf, sizeof(buf), "%s/%s", root, relpath) >=
+	    (int)sizeof(buf))
 		return NULL;
 	return fopen(buf, "r");
 }

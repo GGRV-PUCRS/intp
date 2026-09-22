@@ -31,8 +31,8 @@ struct intp_plugin_ctx {
 	const struct intp_plugin_descriptor *desc; /* points into the .so */
 	void *priv;				   /* set/get_private storage */
 	char origin[PATH_MAX];			   /* .so path (diagnostics) */
-	bool initialized;			   /* init() ran -> shutdown() */
-	int faults;				   /* consecutive sample() faults */
+	bool initialized; /* init() ran -> shutdown() */
+	int faults;	  /* consecutive sample() faults */
 };
 
 struct intp_plugin_set {

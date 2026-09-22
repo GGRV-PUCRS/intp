@@ -18,7 +18,7 @@
 #include "../../src/output/prom_common.h"
 #include "intp_test.h"
 
-#define HAS(hay, needle) INTP_EXPECT(strstr((hay), (needle)) != NULL)
+#define HAS(hay, needle)   INTP_EXPECT(strstr((hay), (needle)) != NULL)
 #define HASNT(hay, needle) INTP_EXPECT(strstr((hay), (needle)) == NULL)
 
 static int emit_to_string(const struct intp_sample *s, char *out, size_t outsz)
@@ -67,9 +67,11 @@ int main(void)
 			    0);
 
 	/* Type classification: COUNT is a counter, RATIO a gauge. */
-	INTP_EXPECT_STREQ(intp_prom_type_for(INTP_UNIT_COUNT, INTP_VALUE_UINT64),
+	INTP_EXPECT_STREQ(intp_prom_type_for(INTP_UNIT_COUNT,
+					     INTP_VALUE_UINT64),
 			  "counter");
-	INTP_EXPECT_STREQ(intp_prom_type_for(INTP_UNIT_RATIO, INTP_VALUE_DOUBLE),
+	INTP_EXPECT_STREQ(intp_prom_type_for(INTP_UNIT_RATIO,
+					     INTP_VALUE_DOUBLE),
 			  "gauge");
 
 	struct intp_metric_value vals[5] = {0};
@@ -110,7 +112,8 @@ int main(void)
 	HAS(out, "# TYPE intp_cpu_ratio gauge");
 	HAS(out, "intp_cpu_ratio{instance=\"ho\\\"st\",target_kind=\"system\"} "
 		 "0.660000");
-	HAS(out, "# TYPE intp_psp_total counter"); /* COUNT -> counter + _total */
+	HAS(out,
+	    "# TYPE intp_psp_total counter"); /* COUNT -> counter + _total */
 	HAS(out, "intp_psp_total{instance=\"ho\\\"st\",target_kind=\"system\"} "
 		 "42");
 	HAS(out, "intp_steal_percent{"); /* PERCENT suffix, int64 below */
