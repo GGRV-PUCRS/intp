@@ -6,7 +6,7 @@
 # no root/cgroups needed, so it runs anywhere (including CI-adjacent
 # local checks).
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/test-validate-attribution.sh @ 2e87b30fc762
 # adapted to the intp port: synthetic input is tsv-legacy-v1 (7 columns,
 # '--' for unavailable) instead of v2.1 JSON; the jq dependency and the
@@ -23,7 +23,9 @@ set +e   # the harness sets -e; assertions below probe failure paths
 
 WORKDIR=$(mktemp -d -t intp-vtest.XXXXXX)
 trap 'rm -rf "$WORKDIR"' EXIT
-WARMUP=2; IDLE_MAX=5; RATIO_MIN=8; CONSERVE_TOL=0.25
+# Read by the functions of the sourced harness.
+# shellcheck disable=SC2034
+WARMUP=2 IDLE_MAX=5 RATIO_MIN=8 CONSERVE_TOL=0.25
 
 T_PASS=0; T_FAIL=0
 ok()   { printf '  ok   %s\n' "$1"; T_PASS=$((T_PASS+1)); }

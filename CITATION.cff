@@ -6,15 +6,16 @@ abstract: >
   netp, nets, blk, mbw, llcmr, llcocc, cpu — from the Linux kernel and
   hardware counters to quantify how co-located workloads interfere
   through shared CPU, last-level cache, memory bandwidth, block I/O, and
-  network resources. It is the production successor to the seven-way
-  comparison harness in intp-comparison, packaged for distro adoption
-  and built around a stable plugin ABI for hardware (GPU, accelerator),
-  application (database, vector store), observability (Prometheus, OTel),
-  and scheduler (Kubernetes, SLURM, IADA) extensions.
+  network resources, per host, process or cgroup. It is the production
+  successor to the multi-variant research harness across-intp, built
+  from its v2.1 (C over stable userspace ABIs) and v3.3 (eBPF/CO-RE)
+  variants, packaged for distro adoption and built around a stable
+  plugin ABI for hardware, application, observability and scheduler
+  extensions.
 authors:
   - family-names: "Sacilotto"
     given-names: "André"
-    affiliation: "PPGCC/PUCRS"
+    affiliation: "School of Technology, Pontifícia Universidade Católica do Rio Grande do Sul (PUCRS)"
     orcid: "https://orcid.org/0000-0002-1639-3238"
 repository-code: "https://github.com/ggrv-intp/intp"
 license: MIT
@@ -25,14 +26,14 @@ keywords:
   - eBPF
   - perf_event
   - resctrl
+  - cgroups
   - performance monitoring
   - cloud computing
   - observability
-version: "0.1.0-dev"
-# 1.0.0 is reserved for the first stable, distro-packageable release.
-# Until then, citing the comparison repo (intp-comparison) remains the
-# canonical reference. The MsC dissertation (defense expected March 2027)
-# will become the academic citation once published:
+version: "0.10.0"
+date-released: "2026-09-22"
+# The MSc dissertation (defense expected March 2027) becomes the
+# preferred citation once published:
 # preferred-citation:
 #   type: thesis
 #   title: "REFACTORING INTP FOR MODERN LINUX KERNELS:
@@ -44,12 +45,65 @@ version: "0.1.0-dev"
 #   institution:
 #     name: "PUCRS"
 #   year: 2027
+preferred-citation:
+  type: conference-paper
+  title: "Cross-Application Interference Profiling in Consolidated Cloud Servers: Improving Portability, Overhead and Fidelity in IntP"
+  authors:
+    - family-names: "Sacilotto"
+      given-names: "André"
+      orcid: "https://orcid.org/0000-0002-1639-3238"
+    - family-names: "Xavier"
+      given-names: "Miguel G."
+    - family-names: "Becker"
+      given-names: "Sören"
+    - family-names: "De Rose"
+      given-names: "Cesar A. F."
+    - family-names: "Kao"
+      given-names: "Odej"
+  conference:
+    name: "38th IEEE/SBC International Symposium on Computer Architecture and High Performance Computing (SBAC-PAD)"
+    city: "Madrid"
+    country: "ES"
+  year: 2026
+  status: "in-press"
+  publisher:
+    name: "IEEE"
+  notes: "DOI and pages to be added upon publication."
 references:
+  - type: software
+    title: "Across-IntP — Multi-Variant Comparison Harness for the intp Interference Profiler"
+    authors:
+      - family-names: "Sacilotto"
+        given-names: "André"
+    repository-code: "https://github.com/ggrv-intp/across-intp"
+    version: "0.2.0"
+  # Listed once submitted, as status "submitted":
+  # - type: article
+  #   title: "Enabling Interference Profiling in IntP While Facing the Challenges of Signal Propagation over Virtualization Environments"
+  #   authors:
+  #     - family-names: "Sacilotto"
+  #       given-names: "André"
+  #     - family-names: "Meyer"
+  #       given-names: "Vinícius"
+  #     - family-names: "Xavier"
+  #       given-names: "Miguel G."
+  #     - family-names: "De Rose"
+  #       given-names: "Cesar A. F."
+  #     - family-names: "Becker"
+  #       given-names: "Sören"
+  #     - family-names: "Kao"
+  #       given-names: "Odej"
+  #   journal: "Journal of Systems Architecture"
+  #   status: "submitted"
   - type: conference-paper
     title: "IntP: Quantifying Cross-Application Interference via System-Level Instrumentation"
     authors:
       - family-names: "Xavier"
         given-names: "Miguel G."
+      - family-names: "Cano"
+        given-names: "Carlos H. C."
+      - family-names: "Meyer"
+        given-names: "Vinícius"
       - family-names: "De Rose"
         given-names: "Cesar A. F."
     conference:
@@ -58,9 +112,36 @@ references:
       country: "FR"
     year: 2022
     month: 11
-    start: 221
-    end: 230
+    start: 231
+    end: 240
     doi: "10.1109/SBAC-PAD55451.2022.00034"
     publisher:
       name: "IEEE"
     url: "https://ieeexplore.ieee.org/document/9980934/"
+  - type: thesis
+    title: "Data Processing with Cross-Application Interference Control via System-Level Instrumentation"
+    authors:
+      - family-names: "Xavier"
+        given-names: "Miguel G."
+    thesis-type: "Ph.D. thesis"
+    institution:
+      name: "Pontifícia Universidade Católica do Rio Grande do Sul (PUCRS)"
+      city: "Porto Alegre"
+      country: "BR"
+    year: 2019
+  - type: article
+    title: "IADA: A dynamic interference-aware cloud scheduling architecture for latency-sensitive workloads"
+    authors:
+      - family-names: "Meyer"
+        given-names: "Vinícius"
+      - family-names: "Da Silva"
+        given-names: "M. L."
+      - family-names: "Kirchoff"
+        given-names: "D. F."
+      - family-names: "De Rose"
+        given-names: "Cesar A. F."
+    journal: "Journal of Systems and Software"
+    volume: 194
+    start: 111491
+    year: 2022
+    doi: "10.1016/j.jss.2022.111491"

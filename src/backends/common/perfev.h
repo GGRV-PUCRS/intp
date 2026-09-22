@@ -2,7 +2,7 @@
 /*
  * perfev.h — perf_event_open(2) wrappers used by llcmr and mbw backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/perfev.h @ 2e87b30fc762
  */
 
@@ -25,15 +25,25 @@ int perfev_read(int fd, uint64_t *value);
 int perfev_read_scaled(int fd, uint64_t *value, uint64_t *enabled,
 		       uint64_t *running);
 
+/* Return values of the two LL-cache openers below. PERFEV_LLC_ARCH
+ * means the model-specific LL-read events were refused (KVM vPMU) and
+ * the ARCHITECTURAL cache-references/misses were opened instead: a
+ * different event family, directional only, never comparable with
+ * host LL-read values (ADR-0010). */
+#define PERFEV_LLC_LL	0
+#define PERFEV_LLC_ARCH 1
+
 /* Convenience: open LL cache "loads" and "misses" for the given target.
  * pid > 0 for per-task; pid == -1 for system-wide (cpu must be set).
- * On failure both fd_loads and fd_misses are -1, return -1. */
+ * Returns PERFEV_LLC_LL or PERFEV_LLC_ARCH. On failure both fd_loads
+ * and fd_misses are -1, return -1. */
 int perfev_open_llc_cache(pid_t pid, int *fd_loads, int *fd_misses);
 
 /* Convenience: open LL cache "loads" and "misses" in cgroup mode for the
  * given cgroup fd on one CPU (PERF_FLAG_PID_CGROUP). cgroup mode requires a
- * specific CPU, so the caller opens one per online CPU and sums. On failure
- * both fds are -1, return -1. */
+ * specific CPU, so the caller opens one per online CPU and sums. Returns
+ * PERFEV_LLC_LL or PERFEV_LLC_ARCH. On failure both fds are -1, return
+ * -1. */
 int perfev_open_llc_cache_cgroup(int cgroup_fd, int cpu, int *fd_loads,
 				 int *fd_misses);
 

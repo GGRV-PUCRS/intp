@@ -3,7 +3,7 @@
 #
 # xval.sh -- cross-/self-variant parity check for intp.
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   shared/validate-cross-variant.sh @ 2e87b30fc762
 # reshaped for intp: instead of comparing six research variants
 # sequentially, it runs all arms CONCURRENTLY under one identical

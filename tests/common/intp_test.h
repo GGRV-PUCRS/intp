@@ -29,56 +29,54 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int  intp_test_failures_;
+static int intp_test_failures_;
 static const char *intp_test_suite_;
 
-#define INTP_TEST_BEGIN(name)						\
-	do {								\
-		intp_test_failures_ = 0;				\
-		intp_test_suite_   = (name);				\
-		fprintf(stderr, "# suite: %s\n", intp_test_suite_);	\
+#define INTP_TEST_BEGIN(name)                                       \
+	do {                                                        \
+		intp_test_failures_ = 0;                            \
+		intp_test_suite_ = (name);                          \
+		fprintf(stderr, "# suite: %s\n", intp_test_suite_); \
 	} while (0)
 
-#define INTP_TEST_END()							\
-	(intp_test_failures_ == 0 ? 0 : 1)
+#define INTP_TEST_END() (intp_test_failures_ == 0 ? 0 : 1)
 
-#define INTP_FAIL_(fmt, ...)						\
-	do {								\
-		intp_test_failures_++;					\
-		fprintf(stderr, "FAIL %s:%d: " fmt "\n",		\
-			__FILE__, __LINE__, ##__VA_ARGS__);		\
+#define INTP_FAIL_(fmt, ...)                                                 \
+	do {                                                                 \
+		intp_test_failures_++;                                       \
+		fprintf(stderr, "FAIL %s:%d: " fmt "\n", __FILE__, __LINE__, \
+			##__VA_ARGS__);                                      \
 	} while (0)
 
-#define INTP_EXPECT(cond)						\
-	do {								\
-		if (!(cond))						\
-			INTP_FAIL_("expected: %s", #cond);		\
+#define INTP_EXPECT(cond)                                  \
+	do {                                               \
+		if (!(cond))                               \
+			INTP_FAIL_("expected: %s", #cond); \
 	} while (0)
 
-#define INTP_EXPECT_EQ(a, b)						\
-	do {								\
-		long long _a = (long long)(a);				\
-		long long _b = (long long)(b);				\
-		if (_a != _b)						\
-			INTP_FAIL_("expected %s == %s; got %lld vs %lld", \
-				   #a, #b, _a, _b);			\
+#define INTP_EXPECT_EQ(a, b)                                                  \
+	do {                                                                  \
+		long long _a = (long long)(a);                                \
+		long long _b = (long long)(b);                                \
+		if (_a != _b)                                                 \
+			INTP_FAIL_("expected %s == %s; got %lld vs %lld", #a, \
+				   #b, _a, _b);                               \
 	} while (0)
 
-#define INTP_EXPECT_STREQ(a, b)						\
-	do {								\
-		const char *_a = (a);					\
-		const char *_b = (b);					\
-		if (!_a || !_b || strcmp(_a, _b) != 0)			\
+#define INTP_EXPECT_STREQ(a, b)                                               \
+	do {                                                                  \
+		const char *_a = (a);                                         \
+		const char *_b = (b);                                         \
+		if (!_a || !_b || strcmp(_a, _b) != 0)                        \
 			INTP_FAIL_("expected %s == %s; got \"%s\" vs \"%s\"", \
-				   #a, #b,				\
-				   _a ? _a : "(null)",			\
-				   _b ? _b : "(null)");			\
+				   #a, #b, _a ? _a : "(null)",                \
+				   _b ? _b : "(null)");                       \
 	} while (0)
 
-#define INTP_EXPECT_NOT_NULL(p)						\
-	do {								\
-		if ((p) == NULL)					\
-			INTP_FAIL_("expected non-NULL: %s", #p);	\
+#define INTP_EXPECT_NOT_NULL(p)                                  \
+	do {                                                     \
+		if ((p) == NULL)                                 \
+			INTP_FAIL_("expected non-NULL: %s", #p); \
 	} while (0)
 
 #endif /* INTP_TEST_H */

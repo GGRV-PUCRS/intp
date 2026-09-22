@@ -4,7 +4,7 @@
  * set (ADR-0009). NOT installed; not part of the public ABI.
  *
  * The provider wraps the eight VM-portable metrics ported from
- * intp-comparison:
+ * across-intp:
  *   variants/v2.1-c-abi-cgroup/src/portable.c @ 2e87b30fc762
  * It deliberately does NOT register into the core "intp_backends"
  * linker section: the canonical seven-metric fingerprint stays

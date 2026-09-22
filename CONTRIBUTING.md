@@ -145,7 +145,7 @@ Open an issue using the `bug` template. The template asks for:
 
 For metric-fidelity regressions specifically, use the
 `metric-fidelity-regression` template; it asks for the comparison
-against `intp-comparison`'s reference output.
+against `across-intp`'s reference output.
 
 For security issues, see [SECURITY.md](SECURITY.md) — please do not
 open a public issue for kernel-adjacent vulnerabilities.

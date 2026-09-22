@@ -4,7 +4,7 @@
  * dispatcher state. NOT installed; the public ABI lives in
  * include/intp/.
  *
- * The backend model is ported from intp-comparison:
+ * The backend model is ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/backend.h @ 2e87b30fc762
  * adapted to ADR-0001 (linker-section registration, ordered selection
  * recorded for --print-schema) and ADR-0010 (semantic model and
@@ -125,8 +125,8 @@ const char *intp_core_status_str(enum intp_core_status s);
 /* ------------------------------------------------------------------------ */
 
 struct intp_core_backend {
-	const char *metric;	 /* short name: "cpu", "blk", … */
-	const char *id;		 /* backend id: "procfs_system", "resctrl", … */
+	const char *metric; /* short name: "cpu", "blk", … */
+	const char *id;	    /* backend id: "procfs_system", "resctrl", … */
 	const char *description; /* one line, for --list-backends */
 	const char *model;	 /* semantic model id (ADR-0010) */
 	const char *scope;	 /* "system" | "pid" | "cgroup" | "vm" */
@@ -161,11 +161,10 @@ struct intp_core_backend {
  */
 #define INTP_BACKEND_REGISTER(sym)                                              \
 	INTP_SECTION_KEEP                                                       \
-	__attribute__((                                                         \
-		section("intp_backends"),                                       \
-		aligned(sizeof(                                                 \
-			void *)))) static const struct intp_core_backend *const \
-		sym##_reg = &(sym)
+	__attribute__((section("intp_backends"),                                \
+		       aligned(sizeof(                                          \
+			       void *)))) static const struct intp_core_backend \
+		*const sym##_reg = &(sym)
 
 /* ------------------------------------------------------------------------ */
 /* Selection state (per metric, recorded for --print-schema)                 */
@@ -216,9 +215,9 @@ struct intp_ctx {
 	 * opts.experimental AND extras->portable_metrics; ADR-0008/0009). */
 	bool portable_enabled;
 
-	struct intp_metric_schema
-		schema[INTP_CORE_METRICS_COUNT + INTP_CORE_PORTABLE_COUNT +
-		       INTP_CORE_PLUGIN_METRICS_MAX];
+	struct intp_metric_schema schema[INTP_CORE_METRICS_COUNT +
+					 INTP_CORE_PORTABLE_COUNT +
+					 INTP_CORE_PLUGIN_METRICS_MAX];
 	size_t schema_len;
 
 	/* Loaded plugins (struct intp_plugin_set *, plugin_loader.h), or
@@ -249,8 +248,9 @@ struct intp_core_extras {
 	const struct intp_core_force *forces;
 	size_t n_forces;
 	const char *const *disabled_metrics; /* NULL-terminated */
-	const char *const *enabled_plugins;  /* --enable-plugin allowlist, NULL-term */
-	long nic_speed_bps_override;	     /* 0 = use detection */
+	const char *const
+		*enabled_plugins;    /* --enable-plugin allowlist, NULL-term */
+	long nic_speed_bps_override; /* 0 = use detection */
 	long mem_bw_max_bps_override;
 	long llc_size_bytes_override;
 	long disk_bw_max_bps_override;
@@ -301,7 +301,7 @@ void intp_core_disable_metric(struct intp_ctx *ctx, const char *metric);
 /* Frozen short-name order: netp nets blk mbw llcmr llcocc cpu. */
 extern const char *const intp_core_metric_short_names[INTP_CORE_METRICS_COUNT];
 
-/* Target-spec helpers ported from intp-comparison:
+/* Target-spec helpers ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
  * (--pids CSV parsing and /proc comm matching; shared with the unit
  * tests). */

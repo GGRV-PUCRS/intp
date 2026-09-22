@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * tsv_legacy.c — the tsv-legacy-v1 output sink (ADR-0002): the exact
- * seven-column TSV every intp-comparison consumer (IADA, the
+ * seven-column TSV every across-intp consumer (IADA, the
  * dissertation plotting code, the Meyer-CSV converter) already parses.
  *
  * Format contract (arbiter: the v2.1 binary with --no-header; see
@@ -14,7 +14,7 @@
  *   - newline-terminated, NO header line, NO leading timestamp (the
  *     bench harness adds its own ts column; that is harness-owned).
  *
- * Rendering ported from intp-comparison:
+ * Rendering ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (format_value / emit_tsv).
  */

@@ -2,7 +2,7 @@
 /*
  * resctrl.c — monitoring group lifecycle and counter aggregation.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/resctrl.c @ 2e87b30fc762
  *
  * Every backend that uses resctrl (mbw, llcocc) goes through this module.
@@ -454,7 +454,10 @@ int resctrl_rescan_cgroup(const char *name, const char *cgroup_path,
 		return 0;
 
 	pid_t pids[RESCAN_MAX_PIDS];
-	int n = procutil_read_cgroup_procs(cgroup_path, pids, RESCAN_MAX_PIDS);
+	/* Subtree, not just the top cgroup: see resolve_target() in
+	 * core.c for the nested-container layout. */
+	int n = procutil_read_cgroup_procs_rec(cgroup_path, pids,
+					       RESCAN_MAX_PIDS);
 
 	if (n <= 0)
 		return 0;

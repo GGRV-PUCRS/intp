@@ -3,7 +3,7 @@
 #
 # gen-vmlinux.sh — produce the vmlinux.h the BPF objects compile
 # against (step 1 of the v3.3 build pipeline, ported from
-# intp-comparison variants/v3.3-ebpf-core-cgroup/Makefile @ 2e87b30fc762).
+# across-intp variants/v3.3-ebpf-core-cgroup/Makefile @ 2e87b30fc762).
 #
 # Prefer dumping the build host's own BTF (exact match for the running
 # kernel); fall back to the checked-in dump for hosts without

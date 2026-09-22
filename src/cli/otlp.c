@@ -14,17 +14,15 @@
 
 #include "otlp.h"
 
-#include "otlp_json.h"
+#include <intp/version.h>
 
 #include <curl/curl.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <intp/version.h>
-
 #include "../core/core.h"
+#include "otlp_json.h"
 
 #define OTLP_MAX_ATTRS 48
 
@@ -32,7 +30,8 @@ static struct {
 	CURL *curl;
 	struct curl_slist *headers;
 	char endpoint[1024];
-	char *attr_storage; /* OTEL_RESOURCE_ATTRIBUTES copy, tokenized in place */
+	char *attr_storage; /* OTEL_RESOURCE_ATTRIBUTES copy, tokenized in place
+			     */
 	struct otlp_kv env_attrs[OTLP_MAX_ATTRS];
 	size_t n_env_attrs;
 	int fail_logged;
@@ -145,7 +144,8 @@ static int otlp_open(struct intp_plugin_ctx *ctx, int fd)
 	curl_easy_setopt(g.curl, CURLOPT_NOSIGNAL, 1L);
 	curl_easy_setopt(g.curl, CURLOPT_WRITEFUNCTION, discard_cb);
 
-	fprintf(stderr, "intp: exporting OTLP/JSON metrics to %s\n", g.endpoint);
+	fprintf(stderr, "intp: exporting OTLP/JSON metrics to %s\n",
+		g.endpoint);
 	return 0;
 }
 
@@ -162,8 +162,8 @@ static int otlp_emit(struct intp_plugin_ctx *ctx,
 	struct intp_output_target ot;
 
 	intp_core_output_target(&ot);
-	attrs[n++] = (struct otlp_kv){"host.name",
-				      sample->host ? sample->host : ""};
+	attrs[n++] =
+		(struct otlp_kv){"host.name", sample->host ? sample->host : ""};
 	attrs[n++] = (struct otlp_kv){"service.name", "intp"};
 	attrs[n++] = (struct otlp_kv){"service.version", INTP_VERSION};
 	attrs[n++] = (struct otlp_kv){"intp.target.kind", ot.kind};

@@ -166,7 +166,8 @@ char *otlp_json_build(const struct intp_sample *sample,
 	uint64_t t_ns = (uint64_t)sample->ts.tv_sec * 1000000000ull +
 			(uint64_t)sample->ts.tv_nsec;
 
-	buf_appendf(&b, "{\"resourceMetrics\":[{\"resource\":{\"attributes\":[");
+	buf_appendf(&b,
+		    "{\"resourceMetrics\":[{\"resource\":{\"attributes\":[");
 	for (size_t i = 0; i < n_res; i++)
 		emit_attr(&b, res[i].key, res[i].value, i == 0);
 	buf_appendf(&b, "]},\"scopeMetrics\":[{\"scope\":{\"name\":\"intp\"},"

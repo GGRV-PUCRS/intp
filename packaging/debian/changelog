@@ -1,3 +1,23 @@
+intp (0.10.0-1) noble; urgency=medium
+
+  * New upstream release, re-synced with across-intp v0.2.0 (ADR-0012);
+    the research repository is now named across-intp (formerly
+    intp-comparison). First release with the working profiler on the
+    PPA; 0.9.0~rc1-1 and 0.9.0-1 were validated but never uploaded.
+  * Cgroup and VM targets are resolved over the whole cgroup subtree,
+    so nested container layouts no longer fall back to system-wide
+    llcmr.
+  * In-guest llcmr on the architectural cache events reports degraded;
+    --print-schema shows the llcmr event family and the mbw ceiling
+    with its source.
+  * libintp0 Breaks/Replaces libintp1 (<< 0.10.0~), the binary package
+    of the 0.2.0~placeholder-1 upload, which ships the same library
+    paths.
+  * Source packages are built per series by make-source-package.sh;
+    the 22.04 build disables the eBPF backends (libbpf 0.5).
+
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Tue, 22 Sep 2026 00:30:00 -0300
+
 intp (0.9.0-1) noble; urgency=medium
 
   * First release: the 0.9.0~rc1 candidate promoted after the

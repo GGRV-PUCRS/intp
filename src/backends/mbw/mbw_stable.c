@@ -2,7 +2,7 @@
 /*
  * mbw_stable.c — memory bandwidth utilization, four-backend hierarchy.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/mbw.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker
@@ -39,6 +39,18 @@ static long resolve_mem_bw_bps(void)
 	if (t && t->mem_bw_max_bps_override > 0)
 		return t->mem_bw_max_bps_override;
 	return detect_memory_bandwidth_max_bps();
+}
+
+/* Per-sample note: flag a guessed ceiling (across-intp C34) unless
+ * the operator supplied --mem-bw-max-bps. */
+static const char *ceiling_note(void)
+{
+	const struct intp_core_target *t = intp_core_target_get();
+
+	if (t && t->mem_bw_max_bps_override > 0)
+		return NULL;
+	return detect_memory_bandwidth_is_fallback() ? "ceiling_fallback"
+						     : NULL;
 }
 
 /* ---- backend 1: resctrl MBM -------------------------------------------- */
@@ -116,7 +128,7 @@ static int resctrl_read_(struct intp_core_sample *out, double interval_sec)
 	out->value = v;
 	out->status = INTP_CORE_OK;
 	out->backend_id = "resctrl_mbm";
-	out->note = NULL;
+	out->note = ceiling_note();
 	return 0;
 }
 
@@ -194,7 +206,7 @@ static int pu_read(struct intp_core_sample *out, double interval_sec)
 	out->value = v;
 	out->status = INTP_CORE_OK;
 	out->backend_id = pu.backend_id;
-	out->note = NULL;
+	out->note = ceiling_note();
 	return 0;
 }
 

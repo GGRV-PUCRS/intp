@@ -2,7 +2,7 @@
 /*
  * detect.h — hardware and environment capability detection for V2.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/detect.h @ 2e87b30fc762
  *
  * Detection is read-only (cpuinfo, sysfs, /proc, optional dmidecode).
@@ -55,6 +55,13 @@ int detect_pmu_passthrough(void);
 long detect_nic_speed_bps(const char *iface); /* -1 if unknown */
 long detect_llc_size_bytes(void);
 long detect_memory_bandwidth_max_bps(void);
+/* How the ceiling above was derived, e.g. "8 IMC channels (uncore_imc)
+ * x 4400 MT/s (dmidecode) x 8 B". Static storage; never NULL. */
+const char *detect_memory_bandwidth_source(void);
+/* 1 when either factor fell back to a default (no uncore_imc PMU, or no
+ * dmidecode speed): the ceiling is a guess and mbw percentages computed
+ * against it are not absolute. */
+int detect_memory_bandwidth_is_fallback(void);
 const char *detect_default_iface(void);
 int detect_default_disk(char *out, size_t out_sz);
 long detect_disk_max_bps(const char *disk); /* class estimate (bytes/s);

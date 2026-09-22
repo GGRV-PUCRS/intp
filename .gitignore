@@ -2,7 +2,7 @@
 # intp — .gitignore
 #
 # Forward-looking: the code that will land here is being designed in
-# ../intp-comparison and will most likely be a kernel-module-free C utility
+# ../across-intp and will most likely be a kernel-module-free C utility
 # (procfs/perf_event/resctrl) or an eBPF/CO-RE program with libbpf, plus a
 # Debian packaging layer for the PPA → official-package path.
 # =============================================================================

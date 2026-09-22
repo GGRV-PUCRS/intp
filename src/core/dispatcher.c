@@ -3,13 +3,13 @@
  * dispatcher.c — the sampling loop: absolute-deadline cadence, per-
  * metric reads through the registry, sample buffer management.
  *
- * Cadence ported from intp-comparison:
+ * Cadence ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (clock_nanosleep TIMER_ABSTIME with timespec_add_sec) so long runs
  * do not drift.
  *
  * Value semantics (ADR-0010): backends report percent [0,100] — the
- * engines' native unit, preserved verbatim from intp-comparison. The
+ * engines' native unit, preserved verbatim from across-intp. The
  * public sample carries the seven core metrics as RATIO [0,1]
  * (value / 100), matching ADR-0002's JSONL example and the
  * `intp_<metric>_ratio` Prometheus naming. tsv-legacy-v1 multiplies

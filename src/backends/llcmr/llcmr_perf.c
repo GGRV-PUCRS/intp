@@ -2,7 +2,7 @@
 /*
  * llcmr_perf.c — LLC miss ratio, three backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/llcmr.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker
@@ -40,6 +40,7 @@ typedef struct {
 	uint64_t *prev_loads;
 	uint64_t *prev_misses;
 	int valid;
+	int arch_fallback; /* PERFEV_LLC_ARCH on any counter (guest vPMU) */
 	const char *backend_id;
 } llcmr_state_t;
 
@@ -114,11 +115,15 @@ static int hwcache_init(void)
 	for (int i = 0; i < n; i++) {
 		pid_t pid = t->n_pids > 0 ? t->pids[i] : -1;
 
-		if (perfev_open_llc_cache(pid, &st.fd_loads[i],
-					  &st.fd_misses[i]) != 0) {
+		int rc = perfev_open_llc_cache(pid, &st.fd_loads[i],
+					       &st.fd_misses[i]);
+
+		if (rc < 0) {
 			free_state();
 			return -1;
 		}
+		if (rc == PERFEV_LLC_ARCH)
+			st.arch_fallback = 1;
 		perfev_read(st.fd_loads[i], &st.prev_loads[i]);
 		perfev_read(st.fd_misses[i], &st.prev_misses[i]);
 	}
@@ -161,7 +166,31 @@ static int generic_read(struct intp_core_sample *out, double interval_sec)
 	out->value = v;
 	out->status = INTP_CORE_OK;
 	out->backend_id = st.backend_id;
+	/* Guest vPMU fallback: architectural cache-references/misses, a
+	 * different event family from the host LL-read events. Directional
+	 * only; never compare it with a host llcmr value (ADR-0010). */
+	if (st.arch_fallback) {
+		out->status = INTP_CORE_DEGRADED;
+		if (!out->note)
+			out->note = "arch_cache_refs";
+	}
 	return 0;
+}
+
+/* Event family behind the active llcmr counters, for --print-schema:
+ * "ll_read" (LLC-loads/LLC-load-misses), "arch_cache_refs" (guest vPMU
+ * fallback), "vendor_raw" (perf_raw codes), or NULL when no perf-based llcmr
+ * backend is initialised. */
+const char *intp_llcmr_event_family(void);
+const char *intp_llcmr_event_family(void)
+{
+	if (!st.valid || !st.fd_loads)
+		return NULL;
+	if (st.arch_fallback)
+		return "arch_cache_refs";
+	if (st.backend_id && strcmp(st.backend_id, "perf_raw") == 0)
+		return "vendor_raw";
+	return "ll_read";
 }
 
 static void hwcache_cleanup(void)
@@ -299,13 +328,18 @@ static int cgroup_init(void)
 	int opened = 0;
 
 	for (int cpu = 0; cpu < (int)ncpu; cpu++) {
-		if (perfev_open_llc_cache_cgroup(cgfd, cpu, &st.fd_loads[cpu],
-						 &st.fd_misses[cpu]) != 0) {
+		int rc = perfev_open_llc_cache_cgroup(cgfd, cpu,
+						      &st.fd_loads[cpu],
+						      &st.fd_misses[cpu]);
+
+		if (rc < 0) {
 			/* offline CPU / transient: skip */
 			st.fd_loads[cpu] = -1;
 			st.fd_misses[cpu] = -1;
 			continue;
 		}
+		if (rc == PERFEV_LLC_ARCH)
+			st.arch_fallback = 1;
 		perfev_read(st.fd_loads[cpu], &st.prev_loads[cpu]);
 		perfev_read(st.fd_misses[cpu], &st.prev_misses[cpu]);
 		opened++;

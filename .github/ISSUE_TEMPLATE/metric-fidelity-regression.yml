@@ -1,5 +1,5 @@
 name: Metric fidelity regression
-description: A metric value differs significantly from the intp-comparison reference or from a previous intp release.
+description: A metric value differs significantly from the across-intp reference or from a previous intp release.
 title: "fidelity(<metric>): <short summary>"
 labels: ["kind/fidelity", "needs-triage"]
 body:
@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         This template is for cases where a metric value is *measurably
-        wrong* — it disagrees with the `intp-comparison` reference, with
+        wrong* — it disagrees with the `across-intp` reference, with
         an earlier `intp` release, or with the canonical formula in
         [docs/METRICS.md](../../docs/METRICS.md).
 
@@ -45,7 +45,7 @@ body:
       placeholder: |
         Workload: stress-ng --vm 4 --vm-bytes 1G
         intp 0.x reports mbw = 35
-        intp-comparison v2 reports mbw = 78
+        across-intp v2 reports mbw = 78
         Reference (perf stat -e cas_count_*) gives mbw ≈ 80
     validations:
       required: true
@@ -56,7 +56,7 @@ body:
       label: Reference / expected value source
       description: |
         Which is the ground truth? Pointers welcome.
-        Examples: intp-comparison `bench/results/...`, the formula in
+        Examples: across-intp `bench/results/...`, the formula in
         METRICS-DEEP-DIVE.md, a `perf stat` invocation, a vendor doc.
     validations:
       required: true

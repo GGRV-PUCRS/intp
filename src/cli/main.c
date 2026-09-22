@@ -149,7 +149,8 @@ static void print_version(void)
 	printf("  OpenTelemetry sink:   enabled\n");
 #endif
 	printf("\n");
-	printf("intp is the production successor to across-intp (https://github.com/ggrv-intp/across-intp).\n");
+	printf("intp is the production successor to across-intp "
+	       "(https://github.com/ggrv-intp/across-intp).\n");
 	printf("License: MIT. See LICENSE in the source distribution.\n");
 }
 
@@ -245,7 +246,7 @@ static const struct option long_opts[] = {
 };
 
 /* Parse "metric:backend_id" for --force-backend (ported parse_force
- * from intp-comparison intp-hybrid.c @ 2e87b30fc762). */
+ * from across-intp intp-hybrid.c @ 2e87b30fc762). */
 static int parse_force(const char *spec, struct intp_core_force *out)
 {
 	const char *colon = strchr(spec, ':');
@@ -361,7 +362,8 @@ static int run_sampling(const struct intp_options *opts,
 			const struct intp_core_extras *extras,
 			const char *format, long duration_ms,
 			bool print_schema_only, bool list_backends,
-			bool do_serve, const struct intp_serve_target *serve_tgt)
+			bool do_serve,
+			const struct intp_serve_target *serve_tgt)
 {
 	struct intp_ctx *ctx = NULL;
 	int rc = intp_core_open_ex(opts, extras, &ctx);
@@ -387,7 +389,8 @@ static int run_sampling(const struct intp_options *opts,
 		const char *bind =
 			serve_tgt->host[0] ? serve_tgt->host : "127.0.0.1";
 		struct intp_serve_opts so = {
-			.bind_host = serve_tgt->host[0] ? serve_tgt->host : NULL,
+			.bind_host =
+				serve_tgt->host[0] ? serve_tgt->host : NULL,
 			.port = serve_tgt->port,
 		};
 
@@ -541,7 +544,8 @@ int main(int argc, char *argv[])
 
 			if (pend == optarg || *pend != '\0' || pid <= 0 ||
 			    pid > INT_MAX) {
-				fprintf(stderr, "intp: bad --pid: %s\n", optarg);
+				fprintf(stderr, "intp: bad --pid: %s\n",
+					optarg);
 				return 2;
 			}
 			opts.target.kind = INTP_TARGET_PID;
@@ -666,14 +670,14 @@ int main(int argc, char *argv[])
 				plugin_dirs[n_plugin_dirs++] = optarg;
 			break;
 		case OPT_ENABLE_PLUGIN:
-			n_enabled_plugins = add_csv(optarg, enabled_plugins,
-						    n_enabled_plugins,
-						    MAX_DISABLED);
+			n_enabled_plugins =
+				add_csv(optarg, enabled_plugins,
+					n_enabled_plugins, MAX_DISABLED);
 			break;
 		case OPT_DISABLE_PLUGIN:
-			n_disabled_plugins = add_csv(optarg, disabled_plugins,
-						     n_disabled_plugins,
-						     MAX_DISABLED);
+			n_disabled_plugins =
+				add_csv(optarg, disabled_plugins,
+					n_disabled_plugins, MAX_DISABLED);
 			break;
 		default:
 			fprintf(stderr, "Try 'intp --help' for usage.\n");

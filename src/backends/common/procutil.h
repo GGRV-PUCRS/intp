@@ -2,7 +2,7 @@
 /*
  * procutil.h — procfs/sysfs parsing helpers.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/include/procutil.h @ 2e87b30fc762
  *
  * Each function is side-effect-free and reads the entire target file.

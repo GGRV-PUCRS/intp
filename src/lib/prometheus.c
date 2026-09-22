@@ -41,16 +41,14 @@
 
 #if INTP_HAVE_PROMETHEUS
 
-#include <microhttpd.h>
-#include <pthread.h>
-#include <time.h>
-
+#include <arpa/inet.h>
 #include <inttypes.h>
+#include <microhttpd.h>
+#include <netinet/in.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdint.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#include <time.h>
 
 static volatile sig_atomic_t prom_stop;
 
@@ -85,9 +83,9 @@ struct prom_snapshot {
 struct prom_serve_state {
 	struct intp_ctx *ctx;
 	struct prom_snapshot snap;
-	char host_esc[300];	/* escaped host, for intp_build_info */
-	char inst_label[320];	/* {instance="…"} for server-health metrics */
-	char full_label[2048];	/* {instance,target_kind,cgroup,pid} per metric */
+	char host_esc[300];    /* escaped host, for intp_build_info */
+	char inst_label[320];  /* {instance="…"} for server-health metrics */
+	char full_label[2048]; /* {instance,target_kind,cgroup,pid} per metric */
 	pthread_t sampler;
 	volatile sig_atomic_t sampler_stop;
 };
@@ -216,7 +214,8 @@ static char *prom_render_metrics(struct prom_serve_state *st, size_t *out_len)
 
 	int rc = prom_buf_appendf(
 		&b,
-		"# HELP intp_build_info Build-time configuration of the running "
+		"# HELP intp_build_info Build-time configuration of the "
+		"running "
 		"intp binary.\n"
 		"# TYPE intp_build_info gauge\n"
 		"intp_build_info{instance=\"%s\",version=\"%s\",schema=\"%s\","
@@ -235,13 +234,14 @@ static char *prom_render_metrics(struct prom_serve_state *st, size_t *out_len)
 			implemented++;
 	}
 	if (!rc)
-		rc = prom_buf_appendf(
-			&b,
-			"# HELP intp_metrics_implemented Core metrics reporting "
-			"real values this scrape (of %d).\n"
-			"# TYPE intp_metrics_implemented gauge\n"
-			"intp_metrics_implemented%s %d\n",
-			INTP_CORE_METRICS_COUNT, st->inst_label, implemented);
+		rc = prom_buf_appendf(&b,
+				      "# HELP intp_metrics_implemented Core "
+				      "metrics reporting "
+				      "real values this scrape (of %d).\n"
+				      "# TYPE intp_metrics_implemented gauge\n"
+				      "intp_metrics_implemented%s %d\n",
+				      INTP_CORE_METRICS_COUNT, st->inst_label,
+				      implemented);
 
 	if (!rc && st->snap.have_sample) {
 		struct timespec now;
@@ -397,10 +397,11 @@ int intp_core_serve_prometheus_ex(struct intp_ctx *ctx,
 		inet_pton(AF_INET, "127.0.0.1", &sa.sin_addr);
 	}
 
-	struct MHD_Daemon *d = MHD_start_daemon(
-		MHD_USE_INTERNAL_POLLING_THREAD, opts->port, NULL, NULL,
-		&prom_handler, &st, MHD_OPTION_SOCK_ADDR,
-		(const struct sockaddr *)&sa, MHD_OPTION_END);
+	struct MHD_Daemon *d =
+		MHD_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, opts->port,
+				 NULL, NULL, &prom_handler, &st,
+				 MHD_OPTION_SOCK_ADDR,
+				 (const struct sockaddr *)&sa, MHD_OPTION_END);
 
 	if (!d) {
 		pthread_mutex_destroy(&st.snap.lock);

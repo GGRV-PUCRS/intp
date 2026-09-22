@@ -2,7 +2,7 @@
 /*
  * test_detect.c — minimal sanity checks for detect.c.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/tests/test-detect.c @ 2e87b30fc762
  *
  * These tests run on whatever system is doing the build; they assert
@@ -11,6 +11,7 @@
  */
 
 #include <string.h>
+#include <unistd.h>
 
 #include "../../src/core/detect.h"
 #include "intp_test.h"
@@ -51,6 +52,18 @@ int main(void)
 	/* mem_bw_max_bps must be positive (default fallback if no
 	 * detection). */
 	INTP_EXPECT(caps.mem_bw_max_bps > 0);
+
+	/* The ceiling says where it came from. Without root dmidecode is
+	 * skipped, so the speed factor must be the flagged DDR4 default,
+	 * never a silent one (across-intp C34). */
+	const char *src = detect_memory_bandwidth_source();
+
+	INTP_EXPECT_NOT_NULL(src);
+	INTP_EXPECT(strstr(src, "IMC channels") != NULL);
+	if (geteuid() != 0) {
+		INTP_EXPECT_EQ(detect_memory_bandwidth_is_fallback(), 1);
+		INTP_EXPECT(strstr(src, "needs root") != NULL);
+	}
 
 	return INTP_TEST_END();
 }

@@ -10,7 +10,7 @@ body:
         fill in, the faster we can reproduce. **For metric value
         regressions specifically**, please use the *Metric fidelity
         regression* template instead — it asks for the comparison
-        against `intp-comparison` reference output.
+        against `across-intp` reference output.
 
   - type: textarea
     id: summary
