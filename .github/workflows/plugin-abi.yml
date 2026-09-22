@@ -57,9 +57,10 @@ jobs:
 
       - name: Dump current ABI
         run: |
+          # libintp.so* matches the symlinks too; abidw takes one ELF file
           abidw --out-file abi-pr.xml \
                 --headers-dir include \
-                build-pr/src/lib/libintp.so* || true
+                "$(readlink -f build-pr/src/lib/libintp.so)" || true
           ls -l abi-pr.xml
 
       - name: Build baseline
@@ -71,9 +72,10 @@ jobs:
 
       - name: Dump baseline ABI
         run: |
+          # libintp.so* matches the symlinks too; abidw takes one ELF file
           abidw --out-file abi-base.xml \
                 --headers-dir baseline/include \
-                build-base/src/lib/libintp.so* || true
+                "$(readlink -f build-base/src/lib/libintp.so)" || true
 
       - name: Run abidiff
         id: diff
