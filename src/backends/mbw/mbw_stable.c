@@ -41,7 +41,7 @@ static long resolve_mem_bw_bps(void)
 	return detect_memory_bandwidth_max_bps();
 }
 
-/* Per-sample note: flag a guessed ceiling (cutting-edge-intp C34) unless
+/* Per-sample note: flag a guessed ceiling (across-intp C34) unless
  * the operator supplied --mem-bw-max-bps. */
 static const char *ceiling_note(void)
 {

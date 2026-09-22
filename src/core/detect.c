@@ -562,7 +562,7 @@ long detect_llc_size_bytes(void)
 
 /* How the last detect_memory_bandwidth_max_bps() call derived its value.
  * The DDR4 speed default is what produced the 42656 MB/s ceiling in the
- * banked cross-deployment campaign (cutting-edge-intp C34): a silent
+ * banked cross-deployment campaign (across-intp C34): a silent
  * fallback there understates the ceiling ~6x on a DDR5 host, so it is
  * recorded and surfaced, not hidden. */
 static char g_mbw_source[128];
@@ -603,13 +603,14 @@ long detect_memory_bandwidth_max_bps(void)
 				/* "Configured Clock Speed" is the label
 				 * dmidecode < 3.1 printed for the same
 				 * field. */
-				if ((sscanf(line,
-					    " Configured Memory Speed: %ld MT/s",
-					    &v) == 1 ||
-				     sscanf(line,
-					    " Configured Clock Speed: %ld MT/s",
-					    &v) == 1) &&
-				    v > speed_mt)
+				if (sscanf(line,
+					   " Configured Memory Speed: %ld MT/s",
+					   &v) != 1 &&
+				    sscanf(line,
+					   " Configured Clock Speed: %ld MT/s",
+					   &v) != 1)
+					continue;
+				if (v > speed_mt)
 					speed_mt = v;
 			}
 			pclose(f);
@@ -896,8 +897,8 @@ void print_capabilities(const system_capabilities_t *c, FILE *out)
 	fprintf(out, "  default disk    %s\n",
 		c->default_disk[0] ? c->default_disk : "(none)");
 	fprintf(out, "  LLC size        %ld bytes\n", c->llc_size_bytes);
-	fprintf(out, "  mem BW max      %ld bytes/sec (%s%s)\n", c->mem_bw_max_bps,
-		detect_memory_bandwidth_source(),
+	fprintf(out, "  mem BW max      %ld bytes/sec (%s%s)\n",
+		c->mem_bw_max_bps, detect_memory_bandwidth_source(),
 		detect_memory_bandwidth_is_fallback()
 			? "; fallback, pass --mem-bw-max-bps"
 			: "");

@@ -55,7 +55,7 @@ int main(void)
 
 	/* The ceiling says where it came from. Without root dmidecode is
 	 * skipped, so the speed factor must be the flagged DDR4 default,
-	 * never a silent one (cutting-edge-intp C34). */
+	 * never a silent one (across-intp C34). */
 	const char *src = detect_memory_bandwidth_source();
 
 	INTP_EXPECT_NOT_NULL(src);
