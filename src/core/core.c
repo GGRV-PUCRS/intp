@@ -86,8 +86,14 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 			 "%s", opts->target.cgroup_path);
 		t->cgroup_path = ctx->cgroup_path_buf;
 		t->kind = INTP_CORE_TARGET_CONTAINER;
-		t->n_pids = procutil_read_cgroup_procs(t->cgroup_path, t->pids,
-						       INTP_CORE_MAX_PIDS);
+		/* Read the whole subtree: under the cgroup v2
+		 * no-internal-processes rule a container cgroup (incus
+		 * ".lxc", systemd init.scope) lists no PIDs at its top,
+		 * and an empty set sends per-task backends such as
+		 * llcmr perf_hwcache to system-wide counting. Same walk
+		 * as v3.3 read_cgroup_pids_rec (cutting-edge-intp D15). */
+		t->n_pids = procutil_read_cgroup_procs_rec(
+			t->cgroup_path, t->pids, INTP_CORE_MAX_PIDS);
 		break;
 	case INTP_TARGET_VM:
 		/* VM netp comes from the host-side tap iface; the other
@@ -103,10 +109,8 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 				 sizeof(ctx->cgroup_path_buf), "%s",
 				 opts->target.cgroup_path);
 			t->cgroup_path = ctx->cgroup_path_buf;
-			t->n_pids =
-				procutil_read_cgroup_procs(t->cgroup_path,
-							   t->pids,
-							   INTP_CORE_MAX_PIDS);
+			t->n_pids = procutil_read_cgroup_procs_rec(
+				t->cgroup_path, t->pids, INTP_CORE_MAX_PIDS);
 		}
 		break;
 	default:
