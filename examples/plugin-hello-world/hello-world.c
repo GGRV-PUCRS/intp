@@ -13,10 +13,10 @@
  * ${BUILDDIR}/examples/plugin-hello-world ...`.
  */
 
+#include <intp/plugin.h>
+
 #include <errno.h>
 #include <stdlib.h>
-
-#include <intp/plugin.h>
 
 struct hello_state {
 	uint64_t tick;
@@ -35,8 +35,8 @@ static int hello_sample(struct intp_plugin_ctx *ctx,
 			struct intp_sample_buffer *out)
 {
 	struct hello_state *s = intp_plugin_ctx_get_private(ctx);
-	return intp_sample_append_u64(out, "app.hello.tick",
-				      INTP_UNIT_COUNT, s->tick++);
+	return intp_sample_append_u64(out, "app.hello.tick", INTP_UNIT_COUNT,
+				      s->tick++);
 }
 
 static void hello_shutdown(struct intp_plugin_ctx *ctx)
@@ -47,30 +47,27 @@ static void hello_shutdown(struct intp_plugin_ctx *ctx)
 
 static const struct intp_metric_schema hello_metrics[] = {
 	{
-		.name           = "app.hello.tick",
-		.unit           = INTP_UNIT_COUNT,
-		.description    = "Monotonic tick counter (hello-world example).",
+		.name = "app.hello.tick",
+		.unit = INTP_UNIT_COUNT,
+		.description = "Monotonic tick counter (hello-world example).",
 		.always_present = true,
 	},
-	{ 0 },
+	{0},
 };
 
-INTP_PLUGIN_DEFINE(
-	.name    = "hello-world",
-	.vendor  = "intp examples",
-	.license = "MIT",
-	.version = "0.1.0",
-	.kind    = INTP_PLUGIN_KIND_METRIC_PROVIDER,
-	.metrics = hello_metrics,
-	.requires = {
-		.vendor_filter = INTP_VENDOR_ANY,
-	},
-	.vt.metric_provider = {
-		.init     = hello_init,
-		.sample   = hello_sample,
-		.shutdown = hello_shutdown,
-	},
-);
+INTP_PLUGIN_DEFINE(.name = "hello-world", .vendor = "intp examples",
+		   .license = "MIT", .version = "0.1.0",
+		   .kind = INTP_PLUGIN_KIND_METRIC_PROVIDER,
+		   .metrics = hello_metrics,
+		   .requires =
+			   {
+				   .vendor_filter = INTP_VENDOR_ANY,
+			   },
+		   .vt.metric_provider = {
+			   .init = hello_init,
+			   .sample = hello_sample,
+			   .shutdown = hello_shutdown,
+		   }, );
 
 /*
  * Optional self-test the loader runs before registering. We simply
@@ -82,4 +79,3 @@ int intp_plugin_self_test(void)
 {
 	return hello_metrics[0].name != NULL ? 0 : -1;
 }
-

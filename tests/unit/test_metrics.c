@@ -4,9 +4,9 @@
  * are non-NULL, and follow the system.interference.* convention.
  */
 
-#include <string.h>
-
 #include <intp/metrics.h>
+
+#include <string.h>
 
 #include "intp_test.h"
 
@@ -23,13 +23,13 @@ int main(void)
 	}
 
 	/* Spot-check the named constants are wired correctly. */
-	INTP_EXPECT_STREQ(INTP_METRIC_NETP,    "system.interference.netp");
-	INTP_EXPECT_STREQ(INTP_METRIC_NETS,    "system.interference.nets");
-	INTP_EXPECT_STREQ(INTP_METRIC_BLK,     "system.interference.blk");
-	INTP_EXPECT_STREQ(INTP_METRIC_MBW,     "system.interference.mbw");
-	INTP_EXPECT_STREQ(INTP_METRIC_LLCMR,   "system.interference.llcmr");
-	INTP_EXPECT_STREQ(INTP_METRIC_LLCOCC,  "system.interference.llcocc");
-	INTP_EXPECT_STREQ(INTP_METRIC_CPU,     "system.interference.cpu");
+	INTP_EXPECT_STREQ(INTP_METRIC_NETP, "system.interference.netp");
+	INTP_EXPECT_STREQ(INTP_METRIC_NETS, "system.interference.nets");
+	INTP_EXPECT_STREQ(INTP_METRIC_BLK, "system.interference.blk");
+	INTP_EXPECT_STREQ(INTP_METRIC_MBW, "system.interference.mbw");
+	INTP_EXPECT_STREQ(INTP_METRIC_LLCMR, "system.interference.llcmr");
+	INTP_EXPECT_STREQ(INTP_METRIC_LLCOCC, "system.interference.llcocc");
+	INTP_EXPECT_STREQ(INTP_METRIC_CPU, "system.interference.cpu");
 
 	return INTP_TEST_END();
 }

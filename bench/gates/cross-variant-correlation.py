@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/plot/cross-variant-correlation.py @ 2e87b30fc762
 # with ONLY the I/O plumbing + dependency surface adapted to the
 # bench/gates run tree:

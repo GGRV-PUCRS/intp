@@ -19,7 +19,7 @@ subdir('unit')
 subdir('plugin-abi')
 subdir('integration')
 
-# live suite: the eBPF regression gates ported from intp-comparison
+# live suite: the eBPF regression gates ported from across-intp
 # v3.3 (tests/regression/*.sh). They need root, a BTF kernel, and
 # stress-ng, so the root meson.build registers a default test setup
 # that excludes them — `meson test` stays green on laptops and CI.

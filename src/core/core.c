@@ -3,7 +3,7 @@
  * core.c — context lifecycle (open/close), target resolution, schema
  * construction, and the JSON schema dump behind intp_print_schema().
  *
- * Target resolution ported from intp-comparison:
+ * Target resolution ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/intp-hybrid.c @ 2e87b30fc762
  * (cgroup targets resolve their member PIDs from cgroup.procs at open
  * time; PID targets bind directly).
@@ -86,7 +86,14 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 			 "%s", opts->target.cgroup_path);
 		t->cgroup_path = ctx->cgroup_path_buf;
 		t->kind = INTP_CORE_TARGET_CONTAINER;
-		t->n_pids = procutil_read_cgroup_procs(t->cgroup_path, t->pids,
+		/* Read the whole subtree: under the cgroup v2
+		 * no-internal-processes rule a container cgroup (incus
+		 * ".lxc", systemd init.scope) lists no PIDs at its top,
+		 * and an empty set sends per-task backends such as
+		 * llcmr perf_hwcache to system-wide counting. Same walk
+		 * as v3.3 read_cgroup_pids_rec (across-intp D15). */
+		t->n_pids =
+			procutil_read_cgroup_procs_rec(t->cgroup_path, t->pids,
 						       INTP_CORE_MAX_PIDS);
 		break;
 	case INTP_TARGET_VM:
@@ -103,10 +110,8 @@ static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
 				 sizeof(ctx->cgroup_path_buf), "%s",
 				 opts->target.cgroup_path);
 			t->cgroup_path = ctx->cgroup_path_buf;
-			t->n_pids =
-				procutil_read_cgroup_procs(t->cgroup_path,
-							   t->pids,
-							   INTP_CORE_MAX_PIDS);
+			t->n_pids = procutil_read_cgroup_procs_rec(
+				t->cgroup_path, t->pids, INTP_CORE_MAX_PIDS);
 		}
 		break;
 	default:
@@ -312,6 +317,30 @@ static void json_escape(FILE *f, const char *s)
 	}
 }
 
+/* Defined in the llcmr backend: "ll_read", "arch_cache_refs",
+ * "vendor_raw", or NULL when no perf counter is open. */
+extern const char *intp_llcmr_event_family(void);
+
+/* --print-schema: the mbw normalization ceiling and where it came from,
+ * so a fallback ceiling (across-intp C34) is visible up front. */
+static void print_mbw_ceiling(FILE *f, const struct intp_ctx *ctx)
+{
+	long over = ctx->target.mem_bw_max_bps_override;
+
+	if (over > 0) {
+		fprintf(f, "      \"ceiling_bps\": %ld,\n", over);
+		fprintf(f, "      \"ceiling_source\": \"--mem-bw-max-bps\",\n");
+		return;
+	}
+	fprintf(f, "      \"ceiling_bps\": %ld,\n",
+		detect_memory_bandwidth_max_bps());
+	fprintf(f, "      \"ceiling_source\": \"");
+	json_escape(f, detect_memory_bandwidth_source());
+	fprintf(f, "\",\n");
+	fprintf(f, "      \"ceiling_fallback\": %s,\n",
+		detect_memory_bandwidth_is_fallback() ? "true" : "false");
+}
+
 static const char *target_kind_str(const struct intp_ctx *ctx)
 {
 	switch (ctx->opts.target.kind) {
@@ -351,8 +380,7 @@ const char *intp_core_metric_help(const char *name)
 	if (!g_open_ctx || !name)
 		return "";
 
-	const struct intp_metric_schema *s =
-		intp_schema_find(g_open_ctx, name);
+	const struct intp_metric_schema *s = intp_schema_find(g_open_ctx, name);
 
 	return (s && s->description) ? s->description : "";
 }
@@ -421,6 +449,14 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 				b->model ? b->model : "unspecified");
 			fprintf(f, "      \"scope\": \"%s\",\n",
 				b->scope ? b->scope : "system");
+			const char *metric = intp_core_metric_short_names[m];
+			const char *family = intp_llcmr_event_family();
+
+			if (strcmp(metric, "llcmr") == 0 && family)
+				fprintf(f, "      \"event_family\": \"%s\",\n",
+					family);
+			if (strcmp(metric, "mbw") == 0)
+				print_mbw_ceiling(f, ctx);
 		}
 		fprintf(f, "      \"rejected\": [");
 		for (int r = 0; r < sel->n_rejected; r++) {

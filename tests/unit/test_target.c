@@ -2,7 +2,7 @@
 /*
  * test_target.c — target parsing and override propagation.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/tests/test-target.c @ 2e87b30fc762
  * onto the intp_test.h macros. Covers:
  *   - intp_parse_pid_list("1,2,3") -> 3 PIDs, correct values

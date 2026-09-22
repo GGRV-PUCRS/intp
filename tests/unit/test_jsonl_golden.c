@@ -17,7 +17,7 @@
 #include "../../src/output/output.h"
 #include "intp_test.h"
 
-#define HAS(hay, needle) INTP_EXPECT(strstr((hay), (needle)) != NULL)
+#define HAS(hay, needle)   INTP_EXPECT(strstr((hay), (needle)) != NULL)
 #define HASNT(hay, needle) INTP_EXPECT(strstr((hay), (needle)) == NULL)
 
 static int emit_to_string(const char *fmt, const struct intp_sample *s,

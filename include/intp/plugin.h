@@ -29,12 +29,12 @@
 #ifndef INTP_PLUGIN_H
 #define INTP_PLUGIN_H
 
+#include <intp/metrics.h>
+#include <intp/schema.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#include <intp/metrics.h>
-#include <intp/schema.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,10 +70,10 @@ enum intp_plugin_kind {
 /* ------------------------------------------------------------------------ */
 
 enum intp_priority {
-	INTP_PRIORITY_LOWEST  = 0,
-	INTP_PRIORITY_LOW     = 1,
-	INTP_PRIORITY_MEDIUM  = 2,
-	INTP_PRIORITY_HIGH    = 3,
+	INTP_PRIORITY_LOWEST = 0,
+	INTP_PRIORITY_LOW = 1,
+	INTP_PRIORITY_MEDIUM = 2,
+	INTP_PRIORITY_HIGH = 3,
 	INTP_PRIORITY_HIGHEST = 4,
 };
 
@@ -81,24 +81,24 @@ enum intp_priority {
 /* Capability declarations (placeholder — full set lands in Step 5)          */
 /* ------------------------------------------------------------------------ */
 
-#define INTP_CAP_NONE			0u
-#define INTP_CAP_PERFMON		(1u << 0)
-#define INTP_CAP_BPF			(1u << 1)
-#define INTP_CAP_DAC_READ_SEARCH	(1u << 2)
-#define INTP_CAP_SYS_PTRACE		(1u << 3)
+#define INTP_CAP_NONE		 0u
+#define INTP_CAP_PERFMON	 (1u << 0)
+#define INTP_CAP_BPF		 (1u << 1)
+#define INTP_CAP_DAC_READ_SEARCH (1u << 2)
+#define INTP_CAP_SYS_PTRACE	 (1u << 3)
 
-#define INTP_VENDOR_INTEL		(1u << 0)
-#define INTP_VENDOR_AMD			(1u << 1)
-#define INTP_VENDOR_ARM			(1u << 2)
-#define INTP_VENDOR_RISCV		(1u << 3)
-#define INTP_VENDOR_ANY			(~0u)
+#define INTP_VENDOR_INTEL	 (1u << 0)
+#define INTP_VENDOR_AMD		 (1u << 1)
+#define INTP_VENDOR_ARM		 (1u << 2)
+#define INTP_VENDOR_RISCV	 (1u << 3)
+#define INTP_VENDOR_ANY		 (~0u)
 
 struct intp_plugin_requirements {
-	const char *min_kernel;	/* "5.8" or NULL */
-	bool        needs_btf;
-	uint32_t    needs_capabilities;
-	uint32_t    vendor_filter;
-	const char *const *needs_paths;	/* NULL-terminated; may be NULL */
+	const char *min_kernel; /* "5.8" or NULL */
+	bool needs_btf;
+	uint32_t needs_capabilities;
+	uint32_t vendor_filter;
+	const char *const *needs_paths; /* NULL-terminated; may be NULL */
 };
 
 /* ------------------------------------------------------------------------ */
@@ -115,7 +115,7 @@ struct intp_plugin_requirements {
 struct intp_plugin_ctx;
 
 void *intp_plugin_ctx_get_private(struct intp_plugin_ctx *ctx);
-void  intp_plugin_ctx_set_private(struct intp_plugin_ctx *ctx, void *priv);
+void intp_plugin_ctx_set_private(struct intp_plugin_ctx *ctx, void *priv);
 
 /**
  * struct intp_sample_buffer — opaque buffer plugins append metric
@@ -126,20 +126,14 @@ void  intp_plugin_ctx_set_private(struct intp_plugin_ctx *ctx, void *priv);
  */
 struct intp_sample_buffer;
 
-int intp_sample_append_double(struct intp_sample_buffer *buf,
-			      const char *name,
-			      enum intp_unit unit,
-			      double value);
+int intp_sample_append_double(struct intp_sample_buffer *buf, const char *name,
+			      enum intp_unit unit, double value);
 
-int intp_sample_append_i64(struct intp_sample_buffer *buf,
-			   const char *name,
-			   enum intp_unit unit,
-			   int64_t value);
+int intp_sample_append_i64(struct intp_sample_buffer *buf, const char *name,
+			   enum intp_unit unit, int64_t value);
 
-int intp_sample_append_u64(struct intp_sample_buffer *buf,
-			   const char *name,
-			   enum intp_unit unit,
-			   uint64_t value);
+int intp_sample_append_u64(struct intp_sample_buffer *buf, const char *name,
+			   enum intp_unit unit, uint64_t value);
 
 /**
  * intp_sample_append_unavailable — record that a metric is
@@ -153,27 +147,27 @@ int intp_sample_append_unavailable(struct intp_sample_buffer *buf,
 /* ------------------------------------------------------------------------ */
 
 struct intp_backend_vtable {
-	const char        *backs;	/* core metric name this backs */
+	const char *backs; /* core metric name this backs */
 	enum intp_priority priority;
-	int  (*probe)(void);
-	int  (*init)(struct intp_plugin_ctx *ctx);
-	int  (*sample)(struct intp_plugin_ctx *ctx,
-		       struct intp_sample_buffer *out);
+	int (*probe)(void);
+	int (*init)(struct intp_plugin_ctx *ctx);
+	int (*sample)(struct intp_plugin_ctx *ctx,
+		      struct intp_sample_buffer *out);
 	void (*shutdown)(struct intp_plugin_ctx *ctx);
 };
 
 struct intp_metric_provider_vtable {
-	int  (*init)(struct intp_plugin_ctx *ctx);
-	int  (*sample)(struct intp_plugin_ctx *ctx,
-		       struct intp_sample_buffer *out);
+	int (*init)(struct intp_plugin_ctx *ctx);
+	int (*sample)(struct intp_plugin_ctx *ctx,
+		      struct intp_sample_buffer *out);
 	void (*shutdown)(struct intp_plugin_ctx *ctx);
 };
 
 struct intp_output_vtable {
 	const char *format_name;
-	int  (*open)(struct intp_plugin_ctx *ctx, int fd);
-	int  (*emit)(struct intp_plugin_ctx *ctx,
-		     const struct intp_sample *sample);
+	int (*open)(struct intp_plugin_ctx *ctx, int fd);
+	int (*emit)(struct intp_plugin_ctx *ctx,
+		    const struct intp_sample *sample);
 	void (*close)(struct intp_plugin_ctx *ctx);
 };
 
@@ -182,19 +176,21 @@ struct intp_output_vtable {
 /* ------------------------------------------------------------------------ */
 
 struct intp_plugin_descriptor {
-	uint32_t                          abi_min;
-	uint32_t                          abi_max;
-	const char                       *name;
-	const char                       *vendor;
-	const char                       *license;	/* SPDX */
-	const char                       *version;
-	enum intp_plugin_kind             kind;
-	const struct intp_metric_schema  *metrics;	/* NULL-terminated list, may be NULL for backends */
-	struct intp_plugin_requirements   requires;
+	uint32_t abi_min;
+	uint32_t abi_max;
+	const char *name;
+	const char *vendor;
+	const char *license; /* SPDX */
+	const char *version;
+	enum intp_plugin_kind kind;
+	const struct intp_metric_schema
+		*metrics; /* NULL-terminated list, may be NULL for backends */
+	struct intp_plugin_requirements
+		requires;
 	union {
-		struct intp_backend_vtable          backend;
-		struct intp_metric_provider_vtable  metric_provider;
-		struct intp_output_vtable           output;
+		struct intp_backend_vtable backend;
+		struct intp_metric_provider_vtable metric_provider;
+		struct intp_output_vtable output;
 	} vt;
 };
 
@@ -231,13 +227,12 @@ struct intp_plugin_descriptor {
  *           },
  *   );
  */
-#define INTP_PLUGIN_DEFINE(...)							\
-	INTP_PLUGIN_VISIBLE							\
-	const struct intp_plugin_descriptor intp_plugin_descriptor = {		\
-		.abi_min = INTP_PLUGIN_ABI_VERSION,				\
-		.abi_max = INTP_PLUGIN_ABI_VERSION,				\
-		__VA_ARGS__							\
-	}
+#define INTP_PLUGIN_DEFINE(...)                                        \
+	INTP_PLUGIN_VISIBLE                                            \
+	const struct intp_plugin_descriptor intp_plugin_descriptor = { \
+		.abi_min = INTP_PLUGIN_ABI_VERSION,                    \
+		.abi_max = INTP_PLUGIN_ABI_VERSION,                    \
+		__VA_ARGS__}
 
 /**
  * intp_plugin_self_test — optional plugin-side smoke check.

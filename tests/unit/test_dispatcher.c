@@ -86,14 +86,10 @@ int main(void)
 	 * matches no registered backend (a -Dwith_ebpf=disabled build) is
 	 * a harmless no-op. */
 	const char *nets_off[] = {
-		"nets:procfs_softirq",
-		"nets:procfs_throughput",
-		"ebpf_bytes",
-		"ebpf_softirq",
-		"ebpf_svctm",
-		"ebpf_sched",
-		"ebpf_perf",
-		NULL,
+		"nets:procfs_softirq", "nets:procfs_throughput",
+		"ebpf_bytes",	       "ebpf_softirq",
+		"ebpf_svctm",	       "ebpf_sched",
+		"ebpf_perf",	       NULL,
 	};
 	struct intp_options opts = {
 		.interval_ms = 10, /* keep the test fast */

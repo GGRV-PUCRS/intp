@@ -4,7 +4,7 @@
 # capture-groundtruth.sh -- per-interval ground-truth side-channel capture
 # for the bench/gates fidelity adjudication.
 #
-# Mirrors the groundtruth capture method of intp-comparison
+# Mirrors the groundtruth capture method of across-intp
 # bench/run-intp-bench.sh (start_groundtruth / merge_perf_into_groundtruth
 # / stop_groundtruth @ 2e87b30fc762), packaged as a standalone synchronous
 # script so run-gates.sh can background it next to the profiler.

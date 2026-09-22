@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 #
-# Ported from intp-comparison:
+# Ported from across-intp:
 #   bench/intp_metrics.py @ 2e87b30fc762
 # copied VERBATIM below this header (shared metric model + parsers +
 # thresholds for the gate analyzers; the gate thresholds RATIO_LO/RATIO_HI,

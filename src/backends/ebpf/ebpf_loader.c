@@ -3,7 +3,7 @@
  * ebpf_loader.c — refcounted singleton around the intp_agg BPF
  * skeleton shared by the five eBPF backend shims.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.c @ 2e87b30fc762
  * The pieces of v3.3's main() live here as follows:
  *   - resolve_cgroup_identity, libbpf_quiet, open/close_cache_counters,
@@ -557,13 +557,13 @@ int intp_ebpf_acquire(void)
 					    PERF_COUNT_HW_CACHE_RESULT_ACCESS,
 					    &st.perf_refs, n_cpus,
 					    perf_cgroup_fd,
-				    intp_core_log_level() > 0) == 0;
+					    intp_core_log_level() > 0) == 0;
 		int miss_ok =
 			open_cache_counters(st.skel->progs.perf_llc_misses,
 					    PERF_COUNT_HW_CACHE_RESULT_MISS,
 					    &st.perf_miss, n_cpus,
 					    perf_cgroup_fd,
-				    intp_core_log_level() > 0) == 0;
+					    intp_core_log_level() > 0) == 0;
 		if (refs_ok && miss_ok) {
 			st.attached |= INTP_EBPF_LLC;
 		} else {

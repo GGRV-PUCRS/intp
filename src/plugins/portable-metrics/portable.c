@@ -2,7 +2,7 @@
 /*
  * portable.c — VM-portable interference metrics (system.portable.*).
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/portable.c @ 2e87b30fc762
  * Formulas, fallback chains, and backend order preserved verbatim;
  * the per-metric accessor singletons and the registry helpers
@@ -775,8 +775,9 @@ static int mb_cg_init(void)
 	for (int cpu = 0; cpu < (int)ncpu; cpu++) {
 		int loads = -1, miss = -1;
 
-		if (perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss) !=
-		    0) {
+		int rc = perfev_open_llc_cache_cgroup(cgfd, cpu, &loads, &miss);
+
+		if (rc < 0) {
 			mb.fd_miss[cpu] = -1;
 			continue;
 		}
@@ -814,7 +815,7 @@ static int mb_hw_init(void)
 		pid_t pid = t->n_pids > 0 ? t->pids[i] : -1;
 		int loads = -1, miss = -1;
 
-		if (perfev_open_llc_cache(pid, &loads, &miss) != 0) {
+		if (perfev_open_llc_cache(pid, &loads, &miss) < 0) {
 			mb_free();
 			return -1;
 		}

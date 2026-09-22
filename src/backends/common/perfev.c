@@ -2,7 +2,7 @@
 /*
  * perfev.c — perf_event_open wrappers and uncore PMU helpers.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/perfev.c @ 2e87b30fc762
  *
  * Uncore PMUs require root or perf_event_paranoid <= -1. The wrappers
@@ -188,7 +188,7 @@ int perfev_open_llc_cache(pid_t pid, int *fd_loads, int *fd_misses)
 		errno = saved;
 		return -1;
 	}
-	return 0;
+	return PERFEV_LLC_ARCH;
 }
 
 /* Open a perf event in cgroup mode: counts events for tasks in <cgroup_fd>
@@ -274,7 +274,7 @@ int perfev_open_llc_cache_cgroup(int cgroup_fd, int cpu, int *fd_loads,
 		errno = saved;
 		return -1;
 	}
-	return 0;
+	return PERFEV_LLC_ARCH;
 }
 
 /* Read /sys/devices/<pmu>/type as an integer (perf event type for that PMU). */

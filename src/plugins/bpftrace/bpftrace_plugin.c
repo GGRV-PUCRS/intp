@@ -14,9 +14,9 @@
  * lintian CI gates.
  */
 
-#include <errno.h>
-
 #include <intp/plugin.h>
+
+#include <errno.h>
 
 static int bpftrace_init(struct intp_plugin_ctx *ctx)
 {
@@ -29,7 +29,7 @@ static int bpftrace_sample(struct intp_plugin_ctx *ctx,
 {
 	(void)ctx;
 	(void)out;
-	return -ENOSYS;	/* Stage 2 fills this in. */
+	return -ENOSYS; /* Stage 2 fills this in. */
 }
 
 static void bpftrace_shutdown(struct intp_plugin_ctx *ctx)
@@ -37,23 +37,21 @@ static void bpftrace_shutdown(struct intp_plugin_ctx *ctx)
 	(void)ctx;
 }
 
-INTP_PLUGIN_DEFINE(
-	.name    = "bpftrace",
-	.vendor  = "intp",
-	.license = "MIT",
-	.version = "0.1.0-stub",
-	.kind    = INTP_PLUGIN_KIND_METRIC_PROVIDER,
-	.metrics = NULL,	/* metrics are user-defined per .bt script */
-	.requires = {
-		.vendor_filter = INTP_VENDOR_ANY,
-		.needs_capabilities = INTP_CAP_BPF,
-	},
-	.vt.metric_provider = {
-		.init     = bpftrace_init,
-		.sample   = bpftrace_sample,
-		.shutdown = bpftrace_shutdown,
-	},
-);
+INTP_PLUGIN_DEFINE(.name = "bpftrace", .vendor = "intp", .license = "MIT",
+		   .version = "0.1.0-stub",
+		   .kind = INTP_PLUGIN_KIND_METRIC_PROVIDER,
+		   .metrics =
+			   NULL, /* metrics are user-defined per .bt script */
+		   .requires =
+			   {
+				   .vendor_filter = INTP_VENDOR_ANY,
+				   .needs_capabilities = INTP_CAP_BPF,
+			   },
+		   .vt.metric_provider = {
+			   .init = bpftrace_init,
+			   .sample = bpftrace_sample,
+			   .shutdown = bpftrace_shutdown,
+		   }, );
 
 INTP_PLUGIN_VISIBLE
 int intp_plugin_self_test(void)

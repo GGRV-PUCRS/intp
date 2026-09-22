@@ -28,7 +28,7 @@ README applies to every single stage.
 [`ggrv-intp/intp`](https://github.com/ggrv-intp/intp) exists, is
 public, and links unambiguously to the source-of-truth research
 repository
-[`ggrv-intp/intp-comparison`](https://github.com/ggrv-intp/intp-comparison).
+[`ggrv-intp/across-intp`](https://github.com/ggrv-intp/across-intp).
 
 **Artefact:** this README and these documents.
 
@@ -45,11 +45,16 @@ checked before Stage 3 begins.
 > stable kernel ABIs) as the baseline backend set with v3.3 (eBPF/
 > CO-RE, in-kernel aggregation, per-cgroup attribution) as the
 > higher-priority acceleration backends — the hybrid ADR-0003
-> anticipated. See SYNC.md for the freeze commit and provenance.
+> anticipated. See SYNC.md for the provenance and the current pin
+> (across-intp `v0.2.0`, ADR-0012). The follow-up deployment study
+> (containers and a KVM guest, JSA manuscript, in preparation) is what
+> shaped 0.10.0's guest semantics: unavailable rather than zero where
+> RDT is missing, proxies and fallback event families labelled as such.
 
-**Gate:** the seven variants in `intp-comparison` have been
+**Gate:** the eleven variants in `across-intp` have been
 benchmarked head-to-head on the dissertation's reference hardware,
-with the results published in the corresponding chapter.
+with the results published in SBAC-PAD 2026 and the corresponding
+dissertation chapter.
 
 **Artefact:** a single chosen variant — almost certainly v2 (pure C
 on stable kernel ABIs) or v3 (eBPF / CO-RE with libbpf). Both are
@@ -66,7 +71,7 @@ on:
 **What could stall it:** an unexpected fidelity gap that forces a
 hybrid (v2 + selective eBPF probes), which would push the convergence
 date back. The
-[VARIANT-COMPARISON](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/VARIANT-COMPARISON.md)
+[VARIANT-COMPARISON](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md)
 document tracks the live state of this analysis.
 
 ---
@@ -102,10 +107,10 @@ matching the dissertation's evaluated configuration.
 
 ## Stage 3 — Debian packaging
 
-> **Status: complete (v0.9.0, 2026-06-12)** — lintian-clean binary
-> and source packages, install/remove smoke-tested; the remote
-> RDT-testbed gate (steps 1–6) passed in full and the release is
-> tagged. Stage 4 (PPA upload) is the next action.
+> **Status: complete.** Lintian-clean binary and source packages,
+> install/remove smoke-tested. v0.9.0 passed the remote RDT-testbed
+> gate (steps 1–6) on 2026-06-12 but was never uploaded; 0.10.0, the
+> re-synced release, is the first to reach the PPA.
 
 **Gate:** Stage 2 produced a tagged release (`v1.0.0` or later) that
 builds reproducibly from a clean checkout on a vanilla Debian sid
@@ -136,11 +141,17 @@ it. This is one reason variant selection in Stage 1 matters.
 
 ## Stage 4 — Personal PPA on Launchpad
 
+> **Status: in progress.** `ppa:norohim/intp` carried placeholders
+> (0.1.0~placeholder2, 0.2.0~placeholder, noble only, no metrics).
+> 0.10.0 goes to `ppa:norohim/intp-staging` first for jammy, noble and
+> resolute on amd64 and arm64, and is copied to the main PPA once all
+> six builds pass. Workflow: [PACKAGING.md](PACKAGING.md).
+
 **Gate:** Stage 3 produces a `.deb` that installs cleanly on Ubuntu
-LTS releases (currently 22.04, 24.04, and 26.04 once released).
+LTS releases (22.04, 24.04 and 26.04).
 
 **Artefact:** a personal PPA at
-`ppa:<owner>/intp` on [Launchpad](https://launchpad.net), serving
+`ppa:norohim/intp` on [Launchpad](https://launchpad.net), serving
 signed `.deb` packages for active LTS series, built from the same
 `debian/` directory.
 
@@ -277,8 +288,8 @@ available externally.
 
 The dissertation defense (expected March 2027) will produce the
 canonical academic reference. Until then, the
-[`CITATION.cff`](https://github.com/ggrv-intp/intp-comparison/blob/main/CITATION.cff)
-in `intp-comparison` is the source of truth for citing this work.
+[`CITATION.cff`](https://github.com/ggrv-intp/across-intp/blob/main/CITATION.cff)
+in `across-intp` is the source of truth for citing this work.
 
 ### Naming and namespace
 

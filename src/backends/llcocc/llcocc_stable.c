@@ -2,7 +2,7 @@
 /*
  * llcocc_stable.c — LLC occupancy, two backends.
  *
- * Ported from intp-comparison:
+ * Ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/llcocc.c @ 2e87b30fc762
  * Formulas and backend order preserved verbatim; registration moved
  * from the per-metric accessor singleton to the ADR-0001 linker
@@ -30,6 +30,7 @@
 #include "../common/resctrl.h"
 
 extern double intp_llcmr_last_value(void); /* defined in the llcmr backend */
+extern const char *intp_llcmr_event_family(void); /* ditto */
 
 static struct {
 	int valid;
@@ -139,7 +140,11 @@ static int proxy_probe(void)
 
 static int proxy_init(void)
 {
-	return 0;
+	/* The proxy has nothing to read unless llcmr opened perf counters.
+	 * llcmr initialises first (metric order), so refuse here rather
+	 * than let --print-schema claim a proxy with no source; the metric
+	 * then reads unavailable, which is what the samples show anyway. */
+	return intp_llcmr_event_family() ? 0 : -1;
 }
 
 static int proxy_read(struct intp_core_sample *out, double interval_sec)

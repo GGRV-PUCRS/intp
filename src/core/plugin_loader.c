@@ -16,7 +16,7 @@
 
 #include "plugin_loader.h"
 
-#include "core.h"
+#include <sys/stat.h>
 
 #include <dirent.h>
 #include <dlfcn.h>
@@ -25,8 +25,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+
+#include "core.h"
 
 #define SO_PREFIX "intp-plugin-"
 #define SCAN_MAX  64
@@ -325,8 +326,8 @@ void intp_plugin_load_all(struct intp_ctx *ctx, const char *const *extra_dirs,
 			if (copy) {
 				char *save = NULL;
 
-				for (char *tok = strtok_r(copy, ":", &save); tok;
-				     tok = strtok_r(NULL, ":", &save))
+				for (char *tok = strtok_r(copy, ":", &save);
+				     tok; tok = strtok_r(NULL, ":", &save))
 					scan_dir(ctx, tok, true, enabled,
 						 disabled);
 				free(copy);
@@ -346,8 +347,8 @@ void intp_plugin_load_all(struct intp_ctx *ctx, const char *const *extra_dirs,
 		if (base && base[0])
 			snprintf(xdg, sizeof(xdg), "%s/intp/plugins", base);
 		else if (home && home[0])
-			snprintf(xdg, sizeof(xdg), "%s/.local/share/intp/plugins",
-				 home);
+			snprintf(xdg, sizeof(xdg),
+				 "%s/.local/share/intp/plugins", home);
 		if (xdg[0])
 			scan_dir(ctx, xdg, true, enabled, disabled);
 	}
@@ -369,7 +370,8 @@ void intp_plugin_merge_schema(struct intp_ctx *ctx)
 
 		for (; m && m->name; m++) {
 			if (ctx->schema_len >= cap) {
-				plog(1, "schema full; dropping plugin metric %s",
+				plog(1,
+				     "schema full; dropping plugin metric %s",
 				     m->name);
 				return;
 			}

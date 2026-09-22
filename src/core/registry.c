@@ -3,7 +3,7 @@
  * registry.c — backend registry: linker-section collection, ordered
  * per-metric candidate lists, probe-driven selection, init fall-through.
  *
- * Selection semantics ported from intp-comparison:
+ * Selection semantics ported from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
  * (metric_select_backend / metric_init / metric_read / metric_cleanup /
  * metric_force_backend), reshaped onto ADR-0001: candidates come from
@@ -39,7 +39,7 @@ const struct intp_core_target *intp_core_target_get(void)
 	return &g_target;
 }
 
-/* Target-spec helpers ported VERBATIM from intp-comparison:
+/* Target-spec helpers ported VERBATIM from across-intp:
  *   variants/v2.1-c-abi-cgroup/src/backend_registry.c @ 2e87b30fc762
  * (intp_parse_pid_list / intp_find_pids_by_comm). */
 

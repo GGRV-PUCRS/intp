@@ -11,7 +11,33 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-09-22
+
+Re-synced with across-intp `v0.2.0` (commit `24f26e5a5df1`; ADR-0012)
+and the first release published to `ppa:norohim/intp`, for Ubuntu
+22.04, 24.04 and 26.04 on amd64 and arm64. The research repository is
+now named across-intp throughout (formerly intp-comparison).
+
+### Fixed
+
+- **Container targets with nested cgroups.** Cgroup and VM targets are
+  resolved over the whole cgroup subtree. A container whose top cgroup
+  holds no processes (Incus `.lxc`, systemd `init.scope`) left the PID
+  set empty: `llcmr` counted system-wide, `cpu` read unavailable, and
+  resctrl enrolled nothing.
+
 ### Added
+
+- `--print-schema` reports the `llcmr` `event_family` (`ll_read`,
+  `vendor_raw`, `arch_cache_refs`) and the `mbw` normalization
+  ceiling with its source (`ceiling_bps`, `ceiling_source`,
+  `ceiling_fallback`); the capability report shows the same source.
+- `packaging/make-source-package.sh --series`: one source package per
+  Ubuntu series from a single orig tarball, versioned
+  `<v>~ppaN~ubuntuYY.MM.1`, with a jammy variant that builds without
+  eBPF.
+- ADR-0012 (pinned re-sync), portable-metrics caveats in PLUGINS.md,
+  claim classes and a KVM-guest availability table in METRICS.md.
 
 - **Plugin loader** (ADR-0004): `--plugin-dir` / `--enable-plugin` /
   `--disable-plugin` load metric-provider plugins via dlopen, with a
@@ -34,6 +60,15 @@ in any minor release and will be flagged in the relevant section below.
 
 ### Changed
 
+- In a KVM guest, `llcmr` on the architectural cache-references/misses
+  fallback reports status `degraded` with the note `arch_cache_refs`
+  instead of `ok`: it is not comparable with a host LL-read value.
+- `mbw` readings normalized against a guessed ceiling (no uncore_imc
+  PMU, or no dmidecode speed) carry the note `ceiling_fallback`, and
+  dmidecode's older `Configured Clock Speed` label is accepted. Where
+  dmidecode was unavailable, percentages can differ from 0.9.0's.
+- `libintp0` Breaks/Replaces `libintp1 (<< 0.10.0~)`, the binary
+  package the PPA placeholder shipped with the same library paths.
 - `--serve` binds **127.0.0.1 by default** (was 0.0.0.0); pass an explicit
   host in the URI (e.g. `prometheus://0.0.0.0:9100`) to expose it. The
   Prometheus render buffer grows on demand instead of failing a scrape,
@@ -48,9 +83,9 @@ in any minor release and will be flagged in the relevant section below.
 
 ---
 
-## [0.9.0] — 2026-06-12
+## [0.9.0] — 2026-06-12 (gated, not published)
 
-The first release. Stamped after the release-blocking RDT-testbed gate
+Tagged upstream only; never uploaded to the PPA. Stamped after the release-blocking RDT-testbed gate
 (steps 1–6 of `tests/regression/run-remote-gate.sh`) passed in full on
 the Sapphire Rapids validation host (Xeon Gold 5412U, kernel 6.17,
 full CMT/MBM): build + 16/16 default suites, live suite incl. the
@@ -91,7 +126,7 @@ track + isolation + conservation for cpu, blk, llcmr, mbw, llcocc).
 
 ---
 
-## [0.9.0-rc1] — 2026-06-10
+## [0.9.0-rc1] — 2026-06-10 (not published)
 
 Stage 2 of the roadmap: the working profiler. Engines ported-and-frozen
 from intp-comparison @ `2e87b30fc762` (provenance: [SYNC.md](SYNC.md)).
@@ -166,7 +201,10 @@ reference hardware.
 
 ---
 
-## [0.2.0-scaffold] — 2026-05-09
+## [0.2.0-placeholder] — 2026-05-09
+
+Published to `ppa:norohim/intp` (noble; binaries `intp`, `libintp1`,
+`libintp-dev`, `intp-doc`, `intp-plugin-bpftrace`). No metrics.
 
 ### Added
 
@@ -174,12 +212,23 @@ reference hardware.
   governance docs (`CONTRIBUTING.md`, `GOVERNANCE.md`, `MAINTAINERS`,
   `SECURITY.md`, `code_of_conduct.txt`), local `CITATION.cff`, and this
   changelog.
+- `intp_probe_ebpf()` / `intp --probe` and `intp_serve_prometheus()` /
+  `intp --serve` public API, serving placeholder values.
+
+---
+
+## [0.1.0-placeholder2] — 2026-05-09
+
+Published to `ppa:norohim/intp` (noble), now superseded: a re-roll of
+the first placeholder with a correct orig tarball. `0.1.0~placeholder-1`
+failed to build on Launchpad and its version is burned.
 
 ---
 
 ## Release history
 
-No releases yet. The first tagged release will be `0.1.0` once the
-build skeleton, plugin ABI, and CI bootstrap (Steps 4–6 of the plan)
-land. `1.0.0` is reserved for the first stable, distro-packageable
-release per [docs/ROADMAP.md](docs/ROADMAP.md) Stage 2.
+`0.1.0-placeholder2` and `0.2.0-placeholder` were PPA placeholders
+without metrics. `0.9.0-rc1` and `0.9.0` passed the RDT-testbed gate
+but were never published. `0.10.0` is the first release on the PPA.
+`1.0.0` is reserved for the plugin ABI freeze, per
+[docs/ROADMAP.md](docs/ROADMAP.md).
