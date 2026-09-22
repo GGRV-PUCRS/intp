@@ -30,8 +30,14 @@
 #                    kernel-5.15 leg and re-run 2-4
 #     8 experimental OPTIONAL, non-blocking: portable-metrics + VM
 #                    target first-pass validation (C26/C27)
+#     9 guest        release-blocking from 0.10.0 when INTP_GUEST_SSH is
+#                    set (then part of the default run): inside the KVM
+#                    guest, mbw must read unavailable, llcocc must be the
+#                    miss-ratio proxy or unavailable (never an RDT
+#                    reading, never a bare 0), and llcmr must name its
+#                    event family (ADR-0012)
 #
-# Steps 1-6 green => stamp v0.9.0 (tag + finalize debian/changelog).
+# Steps 1-6 (and 9 with a guest) green => the release may be tagged.
 # Any red => fix in intp (never in across-intp) and re-run the failed
 # step; each step is independently re-runnable.
 #
@@ -46,6 +52,10 @@
 #   INTP_ACROSS_DIR       remote across-intp checkout for step 5
 #                         (default /root/across-intp; read-only use)
 #   INTP_SSH_OPTS         extra ssh options (e.g. -i ~/.ssh/id_ed25519)
+#   INTP_GUEST_SSH        step 9: command run ON THE HOST to reach the
+#                         guest, e.g. "ssh root@192.168.122.10". The guest
+#                         keeps an intp checkout of the commit under test
+#                         at INTP_GUEST_SCRATCH (default /root/intp).
 
 set -euo pipefail
 
@@ -53,6 +63,8 @@ TARGET="${1:?usage: run-remote-gate.sh user@host [step...]}"
 shift
 STEPS=("${@:-1 2 3 4 5 6}")
 [ $# -eq 0 ] && STEPS=(1 2 3 4 5 6)
+[ $# -eq 0 ] && [ -n "${INTP_GUEST_SSH:-}" ] && STEPS+=(9)
+GUEST_SCRATCH="${INTP_GUEST_SCRATCH:-/root/intp}"
 
 SCRATCH="${INTP_REMOTE_SCRATCH:-/root/intp-gate}"
 ACROSS="${INTP_ACROSS_DIR:-/root/across-intp}"
@@ -193,6 +205,52 @@ step8_experimental() {
 		echo 'portable smoke done (adjudication: bench/analyze-portable.py in across-intp)'"
 }
 
+step9_guest() {
+	log "step 9: in-guest semantics (release-blocking with INTP_GUEST_SSH)"
+	[ -n "${INTP_GUEST_SSH:-}" ] || {
+		echo "ERROR: step 9 needs INTP_GUEST_SSH (host-side command to reach the guest)" >&2
+		exit 1
+	}
+	# Build in the guest, then assert on the host side: the schema and
+	# one short JSONL run come back over the nested ssh.
+	remote "${INTP_GUEST_SSH} 'cd ${GUEST_SCRATCH} &&
+			echo guest HEAD: \$(git rev-parse --short HEAD 2>/dev/null || echo ?) &&
+			systemd-detect-virt &&
+			rm -rf build && meson setup build >/dev/null &&
+			meson compile -C build >/dev/null' &&
+		${INTP_GUEST_SSH} '${GUEST_SCRATCH}/build/src/cli/intp --print-schema' \
+			>/tmp/intp-guest-schema.json &&
+		${INTP_GUEST_SSH} '${GUEST_SCRATCH}/build/src/cli/intp -d 3 -i 1 -f jsonl' \
+			>/tmp/intp-guest-samples.jsonl &&
+		python3 - /tmp/intp-guest-schema.json /tmp/intp-guest-samples.jsonl <<'PY'
+import json, sys
+schema = json.load(open(sys.argv[1]))['metrics']
+rows = [json.loads(l) for l in open(sys.argv[2]) if l.strip()]
+m = lambda k: schema['system.interference.' + k]
+bad = []
+if m('mbw').get('available'):
+    bad.append('mbw available in a guest (backend %s)' % m('mbw').get('backend'))
+occ = m('llcocc')
+if occ.get('available') and occ.get('backend') != 'proxy_from_miss_ratio':
+    bad.append('llcocc backend %s in a guest (expect proxy or unavailable)' % occ.get('backend'))
+mr = m('llcmr')
+if mr.get('available') and mr.get('event_family') not in ('arch_cache_refs', 'll_read', 'vendor_raw'):
+    bad.append('llcmr without event_family')
+for r in rows:
+    vals = r.get('metrics', {})
+    if 'system.interference.mbw' in vals:
+        bad.append('mbw emitted in a guest sample: %r' % vals['system.interference.mbw'])
+        break
+print('guest llcmr family:', mr.get('event_family'), '| llcocc:', occ.get('backend'),
+      '| mbw available:', m('mbw').get('available'), '| samples:', len(rows))
+if not rows:
+    bad.append('no JSONL samples from the guest')
+for b in bad:
+    print('FAIL:', b)
+sys.exit(1 if bad else 0)
+PY"
+}
+
 for s in "${STEPS[@]}"; do
 	case "$s" in
 	1) step1_preflight ;;
@@ -203,6 +261,7 @@ for s in "${STEPS[@]}"; do
 	6) step6_attribution ;;
 	7) step7_ub22 ;;
 	8) step8_experimental ;;
+	9) step9_guest ;;
 	*) echo "unknown step: $s" >&2; exit 2 ;;
 	esac
 done
