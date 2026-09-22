@@ -1,32 +1,49 @@
 # SYNC.md — relationship to the research repository
 
-`intp` is the production line; **across-intp** (the working name of
-the comparison/research monorepo, `github.com/Saccilotto/across-local-intp`,
-publicly referenced as `across-intp`) is the experiment harness
-where the measured variants, the benchmark campaigns, and the papers
-live.
+`intp` is the production line. [**across-intp**](https://github.com/ggrv-intp/across-intp)
+(formerly intp-comparison) is the public research repository where the
+measured variants, the benchmark campaigns and the papers live: its
+`v0.1.0` release is the SBAC-PAD 2026 artifact and its `v0.2.0` release
+the JSA artifact. Decision codes in comments here refer to across-intp's
+logs unless another log is named: `D` entries to `DECISIONS.md`, `C`
+entries to `docs/DECISIONS-container.md`, `S` entries to
+`bench/iada/DECISIONS-sim-experiments.md`.
 
-## The contract: port-and-freeze
+## The contract: pinned re-sync
 
-Code moved **one way**, once, from across-intp into this repository:
+- **Current pin:** across-intp **`ce6600259a41`**, tag `v0.2.0`
+  (2026-09-22), recorded in [ADR-0012](docs/design/0012-resync-across-intp.md)
+  and across-intp D15.
+- **History:** the first port was a one-way freeze at **`2e87b30fc762`**
+  (branch `feat/container-based-interference`, 2026-06-10, across-intp
+  D10). Every ported file carries a provenance header naming its origin
+  path at that commit. The port was verified file by file against the
+  originals (formulas, constants, vendor event codes, branch order,
+  status assignments); the only intended additions are documented in the
+  file headers and commit messages (RMID hygiene; ADR-0001
+  registration). D11 and D12 were back-ported before 0.9.0.
+- **Between syncs** the two repositories evolve independently. Fixes
+  belong in `intp`; experiments belong in across-intp.
+- **A re-sync** names one across-intp commit reachable from its `main`
+  (preferably a tag), diffs every origin below between the previous pin
+  and the new one, classifies each hunk (already present, port,
+  intentional divergence, research-only), and lands as a new ADR here
+  plus a decision entry there. Not a cherry-pick.
 
-- **Freeze baseline:** branch `feat/container-based-interference` at
-  commit **`2e87b30fc762`** (2026-06-10).
-- Every ported file carries a provenance header naming its origin path
-  at that commit. The port was adversarially verified file-by-file
-  against the originals (formulas, constants, vendor event codes,
-  branch order, status assignments) with zero behavioral drift; the
-  only intended additions are documented in the file headers and the
-  commit messages (RMID hygiene; ADR-0001 registration).
-- After the freeze, the two repositories evolve **independently**.
-  Fixes belong in `intp`; experiments belong in across-intp. A future
-  re-sync (in either direction) is a consequential decision that
-  requires a new ADR here and a decision-log entry there — not a
-  cherry-pick.
+## Intentional divergences at the current pin
+
+Recorded in ADR-0012: intp resolves cgroup targets over the whole
+subtree (v2.1 reads the top cgroup only), marks the guest
+architectural-cache `llcmr` fallback as degraded, and reports where the
+`mbw` ceiling came from.
 
 ## Provenance map
 
-| intp | across-intp origin (@ 2e87b30fc762) |
+Origins are paths in across-intp. Each was first ported at
+`2e87b30fc762` and audited unchanged-or-back-ported at the pin
+`ce6600259a41` (ADR-0012).
+
+| intp | across-intp origin |
 |---|---|
 | `src/core/registry.c` (selection semantics) | `variants/v2.1-c-abi-cgroup/src/backend_registry.c` |
 | `src/core/dispatcher.c` (cadence) | `variants/v2.1-c-abi-cgroup/intp-hybrid.c` (main loop) |
@@ -58,15 +75,14 @@ and structural evidence — see ARCHITECTURE.md "Heritage".
 ## Semantic ground truth
 
 Metric formula questions are settled by across-intp's
-`METRICS-ALIGNMENT.md` and `docs/METRICS-DEEP-DIVE.md` at the freeze
-commit, surfaced here through ADR-0010 (semantic models). The
+`METRICS-ALIGNMENT.md` and `docs/METRICS-DEEP-DIVE.md` at the pin, surfaced here through ADR-0010 (semantic models). The
 per-cgroup `nets` byte-share proxy divergence (upstream decision C2)
 is encoded in the parity tooling, not just documented.
 
 ## Re-running cross-repo parity
 
 `tests/regression/xval.sh --cross` compares this repo's binary
-against the v2.1/v3.3 binaries built from an across-intp checkout
+against the v2.1/v3.3 binaries built from an across-intp checkout at the pin
 (`INTP_XVAL_ACROSS_DIR`), with pinned normalizer overrides, the nets
 exemption under cgroup scope, and blk compared within model families.
 The release-blocking run happens on the RDT testbed via
