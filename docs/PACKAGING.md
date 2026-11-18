@@ -163,6 +163,27 @@ packaging/make-source-package.sh --signed
 dput ppa:norohim/intp-staging ../intp_0.10.0-1~ppa1~ubuntu*_source.changes
 ```
 
+**Rehearsal before staging.** `packaging/check-series-build.sh SERIES`
+reproduces a PPA build without Launchpad: it cuts that series' source
+package from committed `HEAD` with `make-source-package.sh`, rebuilds it
+from the `.dsc` with first-alternative Build-Depends resolution, installs
+the binaries and runs the autopkgtest smoke commands. It installs
+packages, so it only runs as root in a throwaway container of the
+target series:
+
+```bash
+podman run --rm -v /dev/null:/sys/kernel/btf/vmlinux:ro \
+    -v "$PWD":/src:ro ubuntu:24.04 \
+    bash -c 'cd /src && packaging/check-series-build.sh noble'
+```
+
+The `/dev/null` mount hides the host BTF, as on a builder. The
+`ppa-rehearsal` workflow runs the same script for all six series x
+architecture pairs on packaging changes, on `main` and on `v*` tags.
+A green rehearsal does not replace staging (the archive snapshot and
+builder differ), but it catches series-specific dependency failures
+without burning a version.
+
 Once all six builds (3 series x 2 architectures) succeed in staging and
 pass the smoke test, copy the binaries to `ppa:norohim/intp` with
 Launchpad's *Copy packages* (same series, no rebuild), so users get
@@ -208,6 +229,12 @@ Notes for the Launchpad build environment:
   applies a jammy variant to its temporary `debian/` copy: no clang,
   bpftool or libbpf-dev, and `-Dwith_ebpf=disabled`. The binary stays
   schema-compatible per ADR-0003.
+- `noble` (24.04) has no real `bpftool` package: the name is virtual,
+  provided by `linux-tools-common` and `linux-lowlatency-tools-common`,
+  which carry at most the `/usr/sbin/bpftool` wrapper. The noble variant
+  names `linux-tools-generic` alone, which installs a versioned
+  `/usr/lib/linux-tools/<kver>/bpftool` that the meson probe finds.
+  `packaging/debian/control` keeps `bpftool` first for Debian.
 
 ---
 

@@ -27,6 +27,14 @@
 # clang, bpftool and libbpf-dev and configures -Dwith_ebpf=disabled:
 # the pure-C engine only, same output schema (ADR-0003).
 #
+# noble (24.04) variant: noble has no real bpftool package. The name is
+# only a virtual package provided by linux-tools-common and
+# linux-lowlatency-tools-common, which ship at most the /usr/sbin/bpftool
+# wrapper; with first-alternative resolution the builder ends up without
+# a working bpftool and meson stops at configure. The noble copy names
+# linux-tools-generic first, which pulls a versioned
+# /usr/lib/linux-tools/<kver>/bpftool that the meson probe finds.
+#
 # Usage: packaging/make-source-package.sh [options]
 #   (run from the repo root, clean tree)
 #
@@ -132,6 +140,19 @@ apply_jammy_variant() {
 	fi
 }
 
+# Name linux-tools-generic as the only bpftool provider.
+apply_noble_variant() {
+	local d="$1"
+
+	sed -i -E 's/^ bpftool \[linux-any\] \| linux-tools-generic \[linux-any\],$/ linux-tools-generic [linux-any],/' \
+		"$d/control"
+	if grep -q -E '^ bpftool[ ,(\[]' "$d/control" ||
+		! grep -q -E '^ linux-tools-generic \[linux-any\],$' "$d/control"; then
+		echo "ERROR: noble variant did not apply cleanly" >&2
+		exit 1
+	fi
+}
+
 # Prepend a throwaway changelog entry naming the series.
 add_series_entry() {
 	local d="$1" series="$2" ver="$3" note="$4"
@@ -162,6 +183,9 @@ build_one() {
 			apply_jammy_variant debian
 			note=" The eBPF backends are not built on 22.04 (libbpf 0.5);"
 			note+=$'\n'"    the pure-C engine serves all seven metrics."
+		elif [ "$series" = noble ]; then
+			apply_noble_variant debian
+			note=" bpftool comes from linux-tools-generic on 24.04."
 		fi
 		add_series_entry debian "$series" "$ver" "$note"
 	fi
