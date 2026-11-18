@@ -1,0 +1,74 @@
+name: PPA build rehearsal
+
+# Builds every series x architecture pair that the PPAs build, from the
+# same per-series source packages make-source-package.sh produces for an
+# upload, with Launchpad's first-alternative Build-Depends resolution and
+# no host BTF. Catches series-specific packaging failures before a
+# staging upload burns a version. Needs no Launchpad access and signs
+# nothing; uploads stay with the maintainer (docs/PACKAGING.md).
+
+on:
+  pull_request:
+    branches: [main, 'feat/**']
+    paths:
+      - 'packaging/**'
+      - 'meson.build'
+      - 'meson_options.txt'
+      - '**/meson.build'
+      - 'scripts/**'
+      - 'src/backends/ebpf/**'
+      - '.github/workflows/ppa-rehearsal.yml'
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ppa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rehearse:
+    name: ${{ matrix.series }} • ${{ matrix.arch }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        series: [jammy, noble, resolute]
+        arch: [amd64, arm64]
+        include:
+          - { series: jammy, image: 'ubuntu:22.04' }
+          - { series: noble, image: 'ubuntu:24.04' }
+          - { series: resolute, image: 'ubuntu:26.04' }
+    container:
+      image: ${{ matrix.image }}
+      # Launchpad builders have no /sys/kernel/btf/vmlinux; hide the
+      # runner's so the checked-in vmlinux.h fallback is what compiles.
+      volumes:
+        - /dev/null:/sys/kernel/btf/vmlinux:ro
+    steps:
+      - name: Install git for checkout
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends git ca-certificates
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Rehearse the PPA build
+        env:
+          INTP_CHECK_OUTDIR: ${{ github.workspace }}/out
+        run: packaging/check-series-build.sh "${{ matrix.series }}"
+
+      - name: Keep the packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppa-rehearsal-${{ matrix.series }}-${{ matrix.arch }}
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 14
