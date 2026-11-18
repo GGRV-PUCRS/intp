@@ -145,7 +145,9 @@ it. This is one reason variant selection in Stage 1 matters.
 > (0.1.0~placeholder2, 0.2.0~placeholder, noble only, no metrics).
 > 0.10.0 goes to `ppa:norohim/intp-staging` first for jammy, noble and
 > resolute on amd64 and arm64, and is copied to the main PPA once all
-> six builds pass. Workflow: [PACKAGING.md](PACKAGING.md).
+> six builds pass. 0.10.0-beta1 precedes it in staging only, built
+> from the same tree but without the RDT-testbed gate; it is never
+> copied to the main PPA. Workflow: [PACKAGING.md](PACKAGING.md).
 
 **Gate:** Stage 3 produces a `.deb` that installs cleanly on Ubuntu
 LTS releases (22.04, 24.04 and 26.04).

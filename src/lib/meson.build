@@ -36,9 +36,11 @@ intp_internal = static_library(
         dependencies: libintp_deps,
 )
 
+# meson accepts only numeric X.Y.Z here; a pre-release suffix such as
+# 0.10.0-beta1 names the same library file as the release it precedes.
 libintp = library(
         'intp',
-        version: meson.project_version(),
+        version: meson.project_version().split('-')[0],
         soversion: '0',
         include_directories: intp_include,
         gnu_symbol_visibility: 'hidden',
