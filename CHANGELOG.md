@@ -11,15 +11,27 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [Unreleased]
 
-## [0.10.0] — 2026-09-22
+## [0.10.0-beta1] — 2026-11-18
 
-Re-synced with across-intp `v0.2.0` (commit `24f26e5a5df1`; ADR-0012)
-and the first release published to `ppa:norohim/intp`, for Ubuntu
-22.04, 24.04 and 26.04 on amd64 and arm64. The research repository is
-now named across-intp throughout (formerly intp-comparison).
+Beta of 0.10.0, re-synced with across-intp `v0.2.0` (commit
+`24f26e5a5df1`; ADR-0012), for Ubuntu 22.04, 24.04 and 26.04 on amd64
+and arm64. **Not validated on the RDT testbed**: this beta skips the
+release gate (`tests/regression/run-remote-gate.sh`) and is published
+to `ppa:norohim/intp-staging` only. 0.10.0 follows, unchanged in
+scope, once the gate passes, and is the first release on
+`ppa:norohim/intp`. The research repository is now named across-intp
+throughout (formerly intp-comparison).
 
 ### Fixed
 
+- **noble source package.** noble has no real `bpftool` package (the
+  name is virtual and its providers ship at most a wrapper), so a PPA
+  builder resolving only the first Build-Depends alternative stopped
+  at configure. The noble variant takes bpftool from
+  `linux-tools-generic`.
+- **clang builds with newer bpftool.** Skeletons from bpftool in
+  linux-tools 6.8.0-149 tripped `-Wcast-align` under `-Werror`; the
+  warning is silenced around the generated header only.
 - **Container targets with nested cgroups.** Cgroup and VM targets are
   resolved over the whole cgroup subtree. A container whose top cgroup
   holds no processes (Incus `.lxc`, systemd `init.scope`) left the PID
@@ -36,6 +48,9 @@ now named across-intp throughout (formerly intp-comparison).
   Ubuntu series from a single orig tarball, versioned
   `<v>~ppaN~ubuntuYY.MM.1`, with a jammy variant that builds without
   eBPF.
+- `packaging/check-series-build.sh` and the `ppa-rehearsal` workflow:
+  every series x architecture PPA build rehearsed in a container, with
+  first-alternative Build-Depends and no host BTF, before an upload.
 - ADR-0012 (pinned re-sync), portable-metrics caveats in PLUGINS.md,
   claim classes and a KVM-guest availability table in METRICS.md.
 
@@ -229,6 +244,7 @@ failed to build on Launchpad and its version is burned.
 
 `0.1.0-placeholder2` and `0.2.0-placeholder` were PPA placeholders
 without metrics. `0.9.0-rc1` and `0.9.0` passed the RDT-testbed gate
-but were never published. `0.10.0` is the first release on the PPA.
+but were never published. `0.10.0-beta1` is a staging-only beta that
+skips the gate; `0.10.0` is the first release on the main PPA.
 `1.0.0` is reserved for the plugin ABI freeze, per
 [docs/ROADMAP.md](docs/ROADMAP.md).
