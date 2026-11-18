@@ -136,7 +136,7 @@ never by automation. Two PPAs are in play:
 | PPA | Purpose |
 | --- | --- |
 | `ppa:norohim/intp` | What users install. Receives only binaries copied from staging after they passed there. |
-| `ppa:norohim/intp-staging` | Release candidates and every first build of a release. Version numbers are checked per PPA, so candidates never burn a version in the main PPA. |
+| `ppa:norohim/intp-staging` | Betas, release candidates and every first build of a release. Version numbers are checked per PPA, so candidates never burn a version in the main PPA. |
 
 Both build amd64 and arm64. One orig tarball serves three series; each
 series gets its own source upload, versioned with a `~ppaN~ubuntuYY.MM.1`
@@ -146,6 +146,7 @@ suffix that sorts below the eventual archive version:
 | --- | --- | --- |
 | Final | `v0.10.0` | `0.10.0-1~ppa1~ubuntu24.04.1` |
 | Release candidate | `v0.10.0-rc1` | `0.10.0~rc1-1~ppa1~ubuntu24.04.1` (staging only) |
+| Beta (no RDT gate) | `v0.10.0-beta1` | `0.10.0~beta1-1~ppa1~ubuntu24.04.1` (staging only) |
 | Packaging-only fix | none | `0.10.0-1~ppa2~ubuntu24.04.1` |
 | Other series | none | `...~ubuntu22.04.1` (jammy), `...~ubuntu26.04.1` (resolute) |
 
