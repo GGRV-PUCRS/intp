@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="331.78751mm" height="172.77292mm" viewBox="0 0 331.78751 172.77292" version="1.1" id="svg1" xml:space="preserve" inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)" sodipodi:docname="drawing-1.svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#505050" bordercolor="#eeeeee" borderopacity="1" inkscape:showpageshadow="0" inkscape:pageopacity="0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#505050" inkscape:document-units="mm" inkscape:zoom="0.73673541" inkscape:cx="590.44264" inkscape:cy="326.44013" inkscape:window-width="1876" inkscape:window-height="1006" inkscape:window-x="0" inkscape:window-y="0" inkscape:window-maximized="1" inkscape:current-layer="heading"/>
+  <defs id="defs1">
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient11" x1="250.0567" y1="53.66283" x2="449.10625" y2="338.01934" gradientTransform="scale(0.90379503,1.1064456)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient12" x1="254.95062" y1="40.481041" x2="458.68549" y2="331.53087" gradientTransform="scale(0.88644616,1.1281001)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient13" x1="254.95062" y1="40.481041" x2="458.68549" y2="331.53087" gradientTransform="scale(0.88644616,1.1281001)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-blue" id="linearGradient14" x1="254.95062" y1="40.481041" x2="546.00044" y2="331.53087" gradientTransform="scale(0.88644616,1.1281001)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-blue" id="linearGradient15" x1="254.95062" y1="40.481041" x2="546.00044" y2="331.53087" gradientTransform="scale(0.88644616,1.1281001)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient16" x1="70.143827" y1="50.781375" x2="325.71915" y2="415.88899" gradientTransform="scale(1.1120009,0.89927983)" gradientUnits="userSpaceOnUse"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient17" gradientUnits="userSpaceOnUse" gradientTransform="scale(1.1120009,0.89927983)" x1="70.143827" y1="50.781375" x2="325.71915" y2="415.88899"/>
+    <linearGradient inkscape:collect="always" xlink:href="#ribbon-cyan" id="linearGradient19" gradientUnits="userSpaceOnUse" gradientTransform="scale(1.1120009,0.89927983)" x1="70.143827" y1="50.781375" x2="325.71915" y2="415.88899"/>
+  </defs>
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1" transform="translate(86.455757,46.169792)"/>
+  <g id="intp-vector" transform="scale(0.26458334)">
+    <defs id="intp-defs">
+      <linearGradient id="badge-navy" x1="40.271103" y1="4.1344781" x2="576.85638" y2="540.71973" gradientTransform="scale(0.91877291,1.0884082)" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#041a29" id="stop1"/>
+        <stop offset="1" stop-color="#092b40" id="stop2"/>
+      </linearGradient>
+      <linearGradient id="ribbon-cyan" x1="0" y1="0" x2="0.69999999" y2="1">
+        <stop offset="0" stop-color="#00c7e4" id="stop3"/>
+        <stop offset=".5" stop-color="#36efdf" id="stop4"/>
+        <stop offset="1" stop-color="#00aeea" id="stop5"/>
+      </linearGradient>
+      <linearGradient id="ribbon-blue" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#042537" id="stop6"/>
+        <stop offset=".7" stop-color="#0876b7" id="stop7"/>
+        <stop offset="1" stop-color="#003653" id="stop8"/>
+      </linearGradient>
+    </defs>
+    <rect id="vector-background" width="1254" height="653" fill="#ffffff" x="0" y="0"/>
+    <g id="logo-badge">
+      <path id="badge-outline" d="m 251,14 q 32,-19 65,0 l 179,109 q 35,20 35,56 v 233 q 0,35 -32,55 L 316,577 q -33,22 -66,2 L 70,470 Q 37,451 37,414 V 178 q 0,-34 31,-54 z" fill="url(#badge-navy)" style="fill:url(#badge-navy)"/>
+      <g id="logo-ribbons" fill="url(#ribbon-cyan)" style="fill:url(#linearGradient16)">
+        <g id="ribbon-master">
+          <path id="ribbon-panel" d="m 226,75 q 32,-44 65,-22 l 166,98 q 27,16 27,56 V 374 H 226 Z" fill="#031b2a"/>
+          <path id="ribbon-band" d="m 226,75 q 20,-25 47,-10 l 177,102 q 33,19 33,53 V 374 H 452 V 226 q 0,-25 -25,-39 L 251,84 q -15,-9 -25,-9 z"/>
+        </g>
+        <g id="ribbon-middle" style="fill:url(#linearGradient13)" transform="translate(-61,37)">
+          <path id="path18" d="M226 75 Q258 31 291 53 L457 151 Q484 167 484 207 V337 H226Z" fill="#031b2a"/>
+          <path id="path19" d="M226 75 Q246 50 273 65 L450 167 Q483 186 483 220 V337 H452 V226 Q452 201 427 187 L251 84 Q236 75 226 75Z" style="fill:url(#linearGradient19)"/>
+        </g>
+        <g id="ribbon-blue-middle" style="fill:url(#linearGradient14)" transform="translate(-119,73)">
+          <path id="path16" d="M226 75 Q258 31 291 53 L457 151 Q484 167 484 207 V301 H226Z" fill="#031b2a"/>
+          <path id="path17" d="M226 75 Q246 50 273 65 L450 167 Q483 186 483 220 V301 H452 V226 Q452 201 427 187 L251 84 Q236 75 226 75Z" style="fill:url(#ribbon-blue)"/>
+        </g>
+      </g>
+      <g id="terminal-mark">
+        <path id="terminal-panel" d="M85 374 V181 Q85 142 117 160 L305 265 Q327 278 327 299 V374" fill="#041b29" stroke="#ffffff" stroke-width="12" stroke-linejoin="round"/>
+        <path id="terminal-baseline" d="M79 374 H484" fill="none" stroke="#ffffff" stroke-width="6"/>
+        <path id="terminal-chevron" d="m 126,222 28,39 -28,16" fill="none" stroke="#ffffff" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+        <rect id="terminal-cursor" x="166" y="292" width="37" height="11" rx="2" fill="#ffffff" transform="rotate(28,166,292)"/>
+      </g>
+      <text id="badge-wordmark" x="284" y="493" text-anchor="middle" fill="#ffffff" font-family="Adwaita Sans, sans-serif" font-size="120px" font-weight="bold" letter-spacing="1">intP</text>
+    </g>
+    <g id="heading" font-family="Liberation Sans, sans-serif">
+      <text id="main-wordmark" x="609" y="170" font-size="190px" font-weight="bold" letter-spacing="-5" fill="#021b2b" font-family="Adwaita Sans, sans-serif">intP</text>
+      <text id="subtitle" x="619" y="245" font-size="35.5" fill="#4b5964" font-family="Adwaita Sans, sans-serif">intP — Linux interference profiler.</text>
+    </g>
+    <g id="feature-dividers" stroke="#d7dddf" stroke-width="1.6">
+      <path id="divider-first" d="M 802,305 V 470"/>
+      <path id="divider-second" d="M 1015,305 V 470"/>
+      <path id="footer-divider" d="m 612,522 h 565"/>
+    </g>
+    <g id="profiling-icon" fill="#031b2b">
+      <rect id="bar-short" x="657" y="350" width="19" height="33" rx="2"/>
+      <rect id="bar-medium" x="684" y="328" width="19" height="55" rx="2"/>
+      <rect id="bar-tall" x="711" y="311" width="19" height="72" rx="2"/>
+    </g>
+    <g id="observability-icon" stroke="#031b2b" stroke-width="6" fill="none">
+      <circle id="target-ring" cx="907" cy="348" r="32"/>
+      <path id="target-ticks" d="m 907,309 v 16 m 0,46 v 16 m -39,-39 h 16 m 46,0 h 16" stroke-linecap="round"/>
+      <circle id="target-center" cx="907" cy="348" r="12" fill="#031b2b" stroke="none"/>
+    </g>
+    <g id="extensible-icon" fill="#031b2b">
+      <path id="puzzle-body" d="m 1113.0002,306.99999 a 10,10 0 0 0 -10,10 10,10 0 0 0 4,8 h -24 c -2.216,0 -4,1.784 -4,4 v 22.87696 a 9,9 0 0 1 8,-4.87696 9,9 0 0 1 9,9 9,9 0 0 1 -9,9 9,9 0 0 1 -8,-4.87695 v 23.87695 c 0,2.216 1.784,4 4,4 h 25.8769 a 9,9 0 0 1 -4.8769,-8 9,9 0 0 1 9,-9 9,9 0 0 1 9,9 9,9 0 0 1 -4.877,8 h 25.877 c 2.216,0 4,-1.784 4,-4 v -18.85937 a 10,10 0 0 0 7,2.85937 10,10 0 0 0 10,-10 10,10 0 0 0 -10,-10 10,10 0 0 0 -7,2.85938 v -21.85938 c 0,-2.216 -1.784,-4 -4,-4 h -24 a 10,10 0 0 0 4,-8 10,10 0 0 0 -10,-10 z"/>
+    </g>
+    <g id="feature-labels" font-family="Liberation Sans, sans-serif" font-size="26px" text-anchor="middle" fill="#0a1420">
+      <text id="profiling-label" x="695" y="435" font-family="Adwaita Sans, sans-serif">
+        <tspan x="695" id="tspan8">Interference</tspan>
+        <tspan x="695" dy="33" id="tspan9">profiling</tspan>
+      </text>
+      <text id="observability-label" x="908" y="435" font-family="Adwaita Sans, sans-serif">
+        <tspan x="908" id="tspan10">Precise</tspan>
+        <tspan x="908" dy="33" id="tspan11">observability</tspan>
+      </text>
+      <text id="extensibility-label" x="1118" y="435" font-family="Adwaita Sans, sans-serif">Extensible</text>
+    </g>
+    <g id="install-command">
+      <rect id="command-box" x="613" y="557" width="564" height="73" rx="8" fill="#ffffff" stroke="#d8dddf" stroke-width="2"/>
+      <text id="command-prompt" x="635" y="605" font-family="Adwaita Sans, sans-serif" font-size="37px" fill="#009f26">$</text>
+      <text id="command-text" x="678" y="605" font-family="Adwaita Sans, sans-serif" font-size="37px" font-weight="bold" fill="#071322">sudo apt install intp</text>
+    </g>
+  </g>
+</svg>
