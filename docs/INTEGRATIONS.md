@@ -154,7 +154,7 @@ profile directly. Two modes:
 
 Run `intp` for each candidate workload, convert the TSV with
 `tools/convert-meyer.py` (ported from
-`intp-comparison/bench/convert-profiler-to-meyer.py`), feed the
+`across-intp/bench/convert-profiler-to-meyer.py`), feed the
 resulting CSV into IADA. This is bit-for-bit compatible with the
 original IADA pipeline.
 

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/**']
 
 permissions:
   contents: read
@@ -47,7 +47,7 @@ jobs:
             compiler: gcc
             ebpf: auto
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload meson logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: meson-logs-${{ matrix.ubuntu }}-${{ matrix.compiler }}-ebpf-${{ matrix.ebpf }}
           path: build/meson-logs/
@@ -113,7 +113,7 @@ jobs:
     name: Ubuntu 22.04 • eBPF=enabled (must fail loud)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -167,13 +167,13 @@ jobs:
           - image: alpine:latest
             install: |
               apk add --no-cache \
-                  meson ninja pkgconf gcc clang musl-dev \
+                  meson ninja pkgconf gcc clang musl-dev linux-headers \
                   elfutils-dev zlib-dev libmicrohttpd-dev python3
             ebpf: disabled
     container:
       image: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: ${{ matrix.install }}
@@ -204,9 +204,12 @@ jobs:
     name: Lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Version sources agree
+        run: scripts/check-versions.sh
 
       - name: Install lint dependencies
         run: |
@@ -216,8 +219,11 @@ jobs:
 
       - name: clang-format
         run: |
+          base="origin/${GITHUB_BASE_REF:-main}"
           mapfile -t files < <(git diff --name-only --diff-filter=AM \
-              origin/main...HEAD -- '*.c' '*.h' || true)
+              "$base"...HEAD -- '*.c' '*.h' \
+              ':!src/backends/ebpf/intp_agg.bpf.[ch]' \
+              ':!src/backends/ebpf/vmlinux/*' || true)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No C/H files changed; skipping."
             exit 0
@@ -238,7 +244,8 @@ jobs:
         run: |
           mapfile -t files < <(git ls-files '*.sh' 'tools/*' || true)
           if [ ${#files[@]} -gt 0 ]; then
-            shellcheck "${files[@]}"
+            # warnings and errors fail; style/info notes are advisory
+            shellcheck --severity=warning "${files[@]}"
           else
             echo "No shell scripts to check yet."
           fi

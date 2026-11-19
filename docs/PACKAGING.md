@@ -49,8 +49,8 @@ allows):
 
 | Artefact                | Contents                                                        |
 |-------------------------|-----------------------------------------------------------------|
-| `intp`                  | The CLI binary and manpage. Depends on `libintp1`.              |
-| `libintp1`              | The shared library `libintp.so.1`. Runtime-linkable.            |
+| `intp`                  | The CLI binary and manpage. Depends on `libintp0`.              |
+| `libintp0`              | The shared library `libintp.so.1`. Runtime-linkable.            |
 | `libintp-dev`           | Public headers, `intp.pc`, static lib (if built).               |
 | `intp-doc`              | The `docs/` tree as installed `share/doc/intp/`.                |
 | `intp-plugin-bpftrace`  | The bpftrace research plugin.                                   |
@@ -79,11 +79,12 @@ packaging/debian/
 ├── rules                  # dh-based, very short
 ├── source/format          # 3.0 (quilt) or (native), TBD
 ├── intp.install
-├── libintp1.install
+├── libintp0.install
 ├── libintp-dev.install
 ├── intp-doc.install
 ├── intp.manpages
-├── intp-collector.service # optional systemd unit
+├── intp-collector.service # NOT installed in 0.9.x — example only
+│                          # (packaging/systemd/; ship + harden at 1.0)
 ├── intp.lintian-overrides # only with explicit justification
 └── tests/                 # autopkgtest entries
 ```
@@ -129,13 +130,131 @@ maintainer is confident it is wrong, with a comment explaining why.
 
 ### Personal PPA workflow
 
+Human-gated: pushes, tags and uploads are performed by the maintainer,
+never by automation. Two PPAs are in play:
+
+| PPA | Purpose |
+| --- | --- |
+| `ppa:norohim/intp` | What users install. Receives only binaries copied from staging after they passed there. |
+| `ppa:norohim/intp-staging` | Betas, release candidates and every first build of a release. Version numbers are checked per PPA, so candidates never burn a version in the main PPA. |
+
+Both build amd64 and arm64. One orig tarball serves three series; each
+series gets its own source upload, versioned with a `~ppaN~ubuntuYY.MM.1`
+suffix that sorts below the eventual archive version:
+
+| Kind | Git tag | Source version (noble) |
+| --- | --- | --- |
+| Final | `v0.10.0` | `0.10.0-1~ppa1~ubuntu24.04.1` |
+| Release candidate | `v0.10.0-rc1` | `0.10.0~rc1-1~ppa1~ubuntu24.04.1` (staging only) |
+| Beta (no RDT gate) | `v0.10.0-beta1` | `0.10.0~beta1-1~ppa1~ubuntu24.04.1` (staging only) |
+| Packaging-only fix | none | `0.10.0-1~ppa2~ubuntu24.04.1` |
+| Other series | none | `...~ubuntu22.04.1` (jammy), `...~ubuntu26.04.1` (resolute) |
+
 ```bash
-git checkout v0.1.0
-gbp buildpackage --git-tag --git-pbuilder
-dput ppa:<owner>/intp ../intp_0.1.0-1_source.changes
+# one-time: dpkg expects debian/ at the source root
+ln -s packaging/debian debian
+
+# binary build + lintian locally
+dpkg-buildpackage -us -uc
+lintian -EvIL +pedantic ../intp_0.10.0-1_amd64.changes
+
+# source packages for jammy, noble and resolute from one orig tarball
+# (after the remote gate passes and the tag is stamped on main)
+packaging/make-source-package.sh --signed
+dput ppa:norohim/intp-staging ../intp_0.10.0-1~ppa1~ubuntu*_source.changes
 ```
 
-PPA configuration lives in `packaging/debian/ppa-config.yml` (TBD).
+**Rehearsal before staging.** `packaging/check-series-build.sh SERIES`
+reproduces a PPA build without Launchpad: it cuts that series' source
+package from committed `HEAD` with `make-source-package.sh`, rebuilds it
+from the `.dsc` with first-alternative Build-Depends resolution, installs
+the binaries and runs the autopkgtest smoke commands. It installs
+packages, so it only runs as root in a throwaway container of the
+target series:
+
+```bash
+podman run --rm -v /dev/null:/sys/kernel/btf/vmlinux:ro \
+    -v "$PWD":/src:ro ubuntu:24.04 \
+    bash -c 'cd /src && packaging/check-series-build.sh noble'
+```
+
+The `/dev/null` mount hides the host BTF, as on a builder. The
+`ppa-rehearsal` workflow runs the same script for all six series x
+architecture pairs on packaging changes, on `main` and on `v*` tags.
+A green rehearsal does not replace staging (the archive snapshot and
+builder differ), but it catches series-specific dependency failures
+without burning a version.
+
+Once all six builds (3 series x 2 architectures) succeed in staging and
+pass the smoke test, copy the binaries to `ppa:norohim/intp` with
+Launchpad's *Copy packages* (same series, no rebuild), so users get
+exactly what was tested. Never copy a binary across series.
+
+**Burned versions.** Launchpad never accepts a version, or an orig
+tarball name with different content, twice. `0.1.0~placeholder-1` (two
+failed builds, bad orig tarball), `0.1.0~placeholder2-1` and
+`0.2.0~placeholder-1` are used forever in the main PPA. `0.9.0~rc1-1`
+and `0.9.0-1` were gated but never uploaded; their tags are
+upstream-only history.
+
+**Tarball discipline.** Cut the orig tarball once per upstream version
+with `make-source-package.sh`, attach it to the GitHub release with
+`SHA256SUMS`, and fetch it from there for later series or rebuilds:
+`git archive` output is not guaranteed byte-identical across git
+versions.
+
+**libintp1 → libintp0.** The 0.2.0 placeholder published the binary
+package `libintp1` on noble, with the same library paths as
+`libintp0`. `libintp0` (the right name for SONAME 0) carries
+`Breaks`/`Replaces: libintp1 (<< 0.10.0~)`, so `apt upgrade` swaps them.
+Test that path in staging: install the placeholder from the main PPA,
+add staging, upgrade.
+
+**Tagging.** Every `chore(release)` commit on `main` gets an annotated
+`v<version>` tag at release time; pre-releases use `-rc1`-style
+suffixes because `~` is illegal in git refnames (`debian/watch`
+mangles the suffix back to `~rc1` for Debian ordering). The tags
+`v0.1.0-placeholder2` and `v0.2.0-placeholder` mark PPA states;
+`v0.9.0-rc1` and `v0.9.0` mark gated commits that were never
+published. Sign release tags (`git tag -s`) with the same key that
+signs the PPA uploads, so `debian/watch` (which tracks tags) can later
+verify them with `pgpmode=gittag`.
+
+**GitHub release.** `release.yml` fires on any `v*` tag and creates a
+*draft* release: tags with a `-` suffix are marked as pre-releases,
+the notes come from the tag's `CHANGELOG.md` section, and the assets
+are the two binary tarballs and the `meson dist` source tarball, each
+with a `.sha256`. Before publishing the draft:
+
+```bash
+# attach the orig tarball the PPA uploads were built from (see
+# "Tarball discipline") and detached signatures for the tarballs
+gpg --armor --detach-sign ../intp_0.10.0.orig.tar.gz
+gh release upload v0.10.0 ../intp_0.10.0.orig.tar.gz ../intp_0.10.0.orig.tar.gz.asc
+gh release edit v0.10.0 --draft=false
+```
+
+For a tag pushed while the workflow was broken, rebuild the draft with
+the current workflow: `gh workflow run release.yml -f tag=v0.10.0-beta1`.
+
+Notes for the Launchpad build environment:
+
+- builders have no `/sys/kernel/btf/vmlinux`; the checked-in
+  `src/backends/ebpf/vmlinux/<arch>/vmlinux.h` fallbacks (selected by
+  `scripts/gen-vmlinux.sh`) are what keep `-Dwith_ebpf=enabled`
+  building there — test the masked-BTF path before uploading.
+- `jammy` (22.04) cannot build eBPF from its archive (libbpf 0.5 <
+  0.8, no standalone `bpftool`, and Launchpad resolves only the first
+  alternative of a Build-Depends entry). `make-source-package.sh`
+  applies a jammy variant to its temporary `debian/` copy: no clang,
+  bpftool or libbpf-dev, and `-Dwith_ebpf=disabled`. The binary stays
+  schema-compatible per ADR-0003.
+- `noble` (24.04) has no real `bpftool` package: the name is virtual,
+  provided by `linux-tools-common` and `linux-lowlatency-tools-common`,
+  which carry at most the `/usr/sbin/bpftool` wrapper. The noble variant
+  names `linux-tools-generic` alone, which installs a versioned
+  `/usr/lib/linux-tools/<kver>/bpftool` that the meson probe finds.
+  `packaging/debian/control` keeps `bpftool` first for Debian.
 
 ---
 
@@ -153,7 +272,7 @@ Version:        0.1.0
 Release:        1%{?dist}
 Summary:        Linux interference profiler
 License:        MIT
-URL:            https://github.com/ggrv-intp/intp
+URL:            https://github.com/GGRV-PUCRS/intp
 Source0:        %{url}/archive/v%{version}/intp-%{version}.tar.gz
 
 BuildRequires:  meson ninja-build clang
@@ -197,7 +316,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Linux interference profiler"
 arch=('x86_64' 'aarch64')
-url='https://github.com/ggrv-intp/intp'
+url='https://github.com/GGRV-PUCRS/intp'
 license=('MIT')
 depends=('libbpf' 'libelf' 'zlib' 'libmicrohttpd')
 makedepends=('meson' 'ninja' 'clang' 'bpf')
@@ -258,16 +377,20 @@ function for build-determinism cleanups; we welcome bug reports here.
 
 ## Static-binary release
 
-GitHub Actions release workflow builds:
+The release workflow builds, on Ubuntu 24.04 runners:
 
-- `intp-static-x86_64-linux.tar.gz` — fully static, glibc-linked.
-- `intp-static-aarch64-linux.tar.gz` — same, cross-built.
-- `intp-static-x86_64-linux-musl.tar.gz` — musl-static.
+- `intp-<version>-x86_64-linux.tar.gz`
+- `intp-<version>-aarch64-linux.tar.gz`
 
-These are signed with a release-time GPG key (the public key is in
-the GitHub release notes) and are intended as *fallbacks*. Users
-running these miss out on distro-managed updates; we recommend the
-distro package whenever possible.
+Each holds the `intp` binary with libintp linked in statically
+(`-Dwith_static=true`); it still links dynamically against glibc,
+libbpf, libelf, zlib and libmicrohttpd, so it runs on Ubuntu 24.04 or
+a newer system with those libraries. A fully static or musl build is
+not produced yet. The tarballs carry `.sha256` files, and the
+maintainer adds `.asc` signatures before publishing the release (see
+"GitHub release" above). They are *fallbacks*: users running them miss
+out on distro-managed updates, so prefer the distro package whenever
+possible.
 
 ---
 

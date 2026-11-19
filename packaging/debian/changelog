@@ -1,3 +1,92 @@
+intp (0.10.0~beta1-1) noble; urgency=medium
+
+  * Beta of the 0.10.0 upstream release, re-synced with across-intp
+    v0.2.0 (ADR-0012); the research repository is now named across-intp
+    (formerly intp-comparison). NOT validated on the RDT testbed: for
+    ppa:norohim/intp-staging only. 0.10.0-1 follows once the release
+    gate passes. 0.9.0~rc1-1 and 0.9.0-1 were validated but never
+    uploaded.
+  * noble source variant takes bpftool from linux-tools-generic (noble
+    has no real bpftool package).
+  * Cgroup and VM targets are resolved over the whole cgroup subtree,
+    so nested container layouts no longer fall back to system-wide
+    llcmr.
+  * In-guest llcmr on the architectural cache events reports degraded;
+    --print-schema shows the llcmr event family and the mbw ceiling
+    with its source.
+  * libintp0 Breaks/Replaces libintp1 (<< 0.10.0~), the binary package
+    of the 0.2.0~placeholder-1 upload, which ships the same library
+    paths.
+  * Source packages are built per series by make-source-package.sh;
+    the 22.04 build disables the eBPF backends (libbpf 0.5).
+
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Wed, 18 Nov 2026 15:10:30 -0300
+
+intp (0.9.0-1) noble; urgency=medium
+
+  * First release: the 0.9.0~rc1 candidate promoted after the
+    release-blocking RDT-testbed validation gate passed in full
+    (Sapphire Rapids, kernel 6.17, full CMT/MBM): build + default test
+    suites, eBPF live suite incl. the ctxsw-amplification gate at 1.02
+    (limit 1.10), 7/7-metric smoke + RMID crash-reap, cross-variant
+    parity vs the frozen v2.1/v3.3 research binaries, and per-cgroup
+    attribution (track/isolation/conservation for cpu blk llcmr mbw
+    llcocc).
+  * Per-cgroup mbw now isolates: the uncore memory-controller PMUs
+    (system-total by design) no longer serve cgroup/PID targets —
+    resctrl mbm does, through a single shared per-target monitoring
+    group (mbw + llcocc no longer contend for the target's RMID).
+  * --serve exposes live values (sampling thread, honest omission of
+    unavailable metrics, scrape staleness gauge) and honors the full
+    targeting surface; built with libmicrohttpd by default.
+  * eBPF llcmr sampling no longer requests per-overflow perf wakeups
+    (~6.7k ctxsw/s saved on hybrid client CPUs; documented deviation
+    from the research origin).
+  * Test and packaging robustness: deterministic unit selection under
+    root+eBPF, intp-scoped BPF leak checks, the checked-in vmlinux.h
+    BTF fallback is properly tracked (chroot/PPA builds no longer
+    depend on host BTF), source-package build flow via
+    packaging/make-source-package.sh.
+
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Fri, 12 Jun 2026 17:30:00 -0300
+
+intp (0.9.0~rc1-1) noble; urgency=medium
+
+  * Stage 2 complete: the working profiler replaces the scaffold stubs.
+    Engines ported-and-frozen from intp-comparison @ 2e87b30fc762
+    (see SYNC.md): the v2.1 stable-ABI backend set (procfs/sysfs/
+    perf_event_open/resctrl, per-metric fallback chains, graceful
+    degradation — unavailable is never silent zero) plus the v3.3
+    eBPF/CO-RE engine as higher-priority backends (in-kernel counter
+    aggregation, per-cgroup attribution, clean fall-through on
+    verifier rejection).
+  * Output: jsonl (primary, self-describing), tsv-legacy-v1
+    (bit-compatible with the IADA/intp-comparison consumers),
+    prometheus text format. --print-schema reports per-metric backend,
+    semantic model (ADR-0010), scope, stability, and per-candidate
+    rejection reasons.
+  * CLI: targeting (-p/-c/--pids/--comm/--target-container), backend
+    control (--force-backend/--disable-backend/--disable-metric/
+    --list-backends), hardware normalizer overrides; experimental
+    surfaces (--target-vm, --portable-metrics) fenced behind
+    --experimental per ADR-0008.
+  * resctrl RMID hygiene: stale mon_group reaping and a 75% RMID
+    budget preflight with fall-through to perf backends.
+  * Packaging: bpftool added to Build-Depends (BPF skeleton
+    generation); checked-in vmlinux.h fallback keeps chroot/PPA
+    builds working without /sys/kernel/btf. Example systemd unit
+    ships as documentation only (packaging/systemd/; not installed —
+    deferred to 1.0 with a hardening review).
+  * Deferred: OTLP sink (post-0.9); dlopen plugin loader (the
+    portable-metrics provider is statically linked in this line, so
+    no intp-plugin-portable package yet); --serve live values pending
+    a libmicrohttpd environment.
+  * RELEASE GATE: this is a release candidate. The v0.9.0 tag is
+    stamped only after the RDT-testbed validation gate passes
+    (tests/regression/run-remote-gate.sh steps 1-6).
+
+ -- André Sacilotto Santos <sacilotto.andre@gmail.com>  Wed, 10 Jun 2026 17:00:00 -0300
+
 intp (0.2.0~placeholder-1) noble; urgency=low
 
   * Add intp_probe_ebpf() public API + `intp --probe` CLI command:

@@ -1,0 +1,15 @@
+# autopkgtest smoke checks. Superficial: they exercise the installed
+# binary's self-describing surfaces only (no eBPF/root/hardware needed),
+# mirroring the build-time integration assertions in tests/integration/.
+Test-Command: intp --version
+Depends: intp
+Restrictions: superficial
+
+Test-Command: intp --help
+Depends: intp
+Restrictions: superficial
+
+# The schema dump must list all seven frozen core metrics and be valid JSON.
+Test-Command: intp --print-schema | python3 -c 'import json,sys; d=json.load(sys.stdin); s=json.dumps(d); assert all(("system.interference."+m) in s for m in ("netp","nets","blk","mbw","llcmr","llcocc","cpu")), "missing core metric"'
+Depends: intp, python3
+Restrictions: superficial

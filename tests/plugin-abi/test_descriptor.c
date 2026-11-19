@@ -15,12 +15,12 @@
  * change to the ABI.
  */
 
+#include <intp/plugin.h>
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <intp/plugin.h>
 
 #include "intp_test.h"
 
@@ -59,14 +59,13 @@ int main(int argc, char *argv[])
 	INTP_EXPECT(desc->abi_min <= desc->abi_max);
 
 	/* (3) identity */
-	INTP_EXPECT_STREQ(desc->name,    "hello-world");
-	INTP_EXPECT_STREQ(desc->vendor,  "intp examples");
+	INTP_EXPECT_STREQ(desc->name, "hello-world");
+	INTP_EXPECT_STREQ(desc->vendor, "intp examples");
 	INTP_EXPECT_STREQ(desc->license, "MIT");
 	INTP_EXPECT_NOT_NULL(desc->version);
 
 	/* (4) kind */
-	INTP_EXPECT_EQ((int)desc->kind,
-		       (int)INTP_PLUGIN_KIND_METRIC_PROVIDER);
+	INTP_EXPECT_EQ((int)desc->kind, (int)INTP_PLUGIN_KIND_METRIC_PROVIDER);
 
 	/* (5) metrics table is non-empty */
 	INTP_EXPECT_NOT_NULL(desc->metrics);

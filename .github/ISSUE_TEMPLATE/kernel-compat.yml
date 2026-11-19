@@ -1,5 +1,5 @@
 name: Kernel compatibility
-description: `intp` fails or degrades on a specific kernel version, vendor patch series, or hardware platform.
+description: "`intp` fails or degrades on a specific kernel version, vendor patch series, or hardware platform."
 title: "kernel: <kernel version / platform> — <short summary>"
 labels: ["area/kernel-compat", "needs-triage"]
 body:
@@ -9,7 +9,7 @@ body:
         Kernel evolution is the long pole for this project. Reports here
         feed the kernel-compat matrix in
         [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) and the
-        version notes in [VERSIONS.md](../../intp-comparison/VERSIONS.md)
+        version notes in [VERSIONS.md](https://github.com/GGRV-PUCRS/across-intp/blob/main/VERSIONS.md)
         of the comparison repo.
 
   - type: input
@@ -75,8 +75,8 @@ body:
   - type: input
     id: comparison
     attributes:
-      label: Reference behaviour in intp-comparison (if applicable)
+      label: Reference behaviour in across-intp (if applicable)
       description: |
-        If you've already tried the relevant variant in `intp-comparison`,
+        If you've already tried the relevant variant in `across-intp`,
         does it work there? Which variant?
       placeholder: e.g. "v2 works on this kernel; v3 fails to load BPF program"

@@ -4,12 +4,12 @@
 - **Date:** 2026-05-08
 - **Deciders:** Lead maintainer
 - **Supersedes:** —
-- **Related:** [ARCHITECTURE.md](../ARCHITECTURE.md), [ADR-0001](0001-backend-registry.md), `intp-comparison/v3-ebpf-libbpf/DESIGN.md`
+- **Related:** [ARCHITECTURE.md](../ARCHITECTURE.md), [ADR-0001](0001-backend-registry.md), `across-intp/v3-ebpf-libbpf/DESIGN.md`
 
 ## Context
 
 The dissertation comparison
-([`intp-comparison/docs/VARIANT-COMPARISON.md`](https://github.com/ggrv-intp/intp-comparison/blob/main/docs/VARIANT-COMPARISON.md))
+([`across-intp/docs/VARIANT-COMPARISON.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/VARIANT-COMPARISON.md))
 shows that the eBPF variant (v3) achieves the highest metric fidelity
 at the lowest runtime overhead, but that it requires:
 
@@ -72,7 +72,7 @@ following the layout established in v3 of the comparison repository.
 
 - Two paths to test for every core metric. The cross-variant
   equivalence harness (ported from
-  `intp-comparison/shared/validate-cross-variant.sh` to
+  `across-intp/shared/validate-cross-variant.sh` to
   `tests/regression/`) keeps the two honest.
 - CO-RE relocation can fail on kernels with inlined or renamed
   functions (Zhong et al., 2025). Mitigation: the eBPF probe is
@@ -115,4 +115,4 @@ following the layout established in v3 of the comparison repository.
   debuggable. The failure path logs the rejected program name, the
   kernel version, and the relevant BTF probe; users filing
   kernel-compat issues can paste this into the
-  [kernel-compat issue template](../.github/ISSUE_TEMPLATE/kernel-compat.yml).
+  [kernel-compat issue template](../../.github/ISSUE_TEMPLATE/kernel-compat.yml).

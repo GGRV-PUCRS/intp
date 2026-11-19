@@ -1,0 +1,278 @@
+.\" SPDX-License-Identifier: MIT
+.TH INTP 1 "September 2026" "intp" "User Commands"
+.SH NAME
+intp \- Linux interference profiler
+.SH SYNOPSIS
+.B intp
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B intp
+measures cross-workload interference on a Linux host. It samples seven
+core metrics at a fixed cadence and emits structured records on
+standard output:
+.TP
+.B netp
+NIC-level network utilization \(em share of the physical link
+bandwidth.
+.TP
+.B nets
+Network stack utilization \(em CPU time spent in NET_TX/NET_RX
+softirq handling.
+.TP
+.B blk
+Block I/O utilization. The semantic model depends on the active
+backend (see
+.BR "SEMANTIC MODELS" ).
+.TP
+.B mbw
+Memory bandwidth utilization \(em share of the sustained DRAM
+bandwidth.
+.TP
+.B llcmr
+Last-level cache miss ratio \(em misses per reference.
+.TP
+.B llcocc
+Last-level cache occupancy \(em share of LLC capacity (Intel
+RDT/CMT, AMD QoS, or ARM MPAM via resctrl).
+.TP
+.B cpu
+CPU utilization \(em busy share of total CPU time.
+.PP
+Each metric is collected through the highest-priority
+.I backend
+whose capability probe passes on the running host (kernel interfaces,
+hardware features, process privileges). A metric whose backends all
+fail to probe is reported as
+.I unavailable
+\(em never as a silent zero. Run
+.B intp \-\-print\-schema
+to see the active selection and the reason every other candidate was
+rejected.
+.SH OPTIONS
+.SS Targeting
+.TP
+.BR \-p ", " \-\-pid " \fIPID\fR"
+Profile a specific process.
+.TP
+.B \-\-pids \fILIST\fR
+Profile a comma-separated list of PIDs (e.g. \fB1234,1235\fR).
+Overrides \fB\-\-pid\fR.
+.TP
+.B \-\-comm \fINAME\fR
+Profile every process whose \fI/proc/<pid>/comm\fR equals \fINAME\fR.
+Warns when no process matches.
+.TP
+.BR \-c ", " \-\-cgroup " \fIPATH\fR"
+Profile a cgroup-v2 path.
+.TP
+.B \-\-target\-container \fIPATH\fR
+Alias of \fB\-\-cgroup\fR with an explicit container-tenant intent.
+.TP
+.B \-\-target\-vm \fIIFACE\fR
+(Experimental; requires \fB\-\-experimental\fR.) Profile a KVM/QEMU
+virtual machine: network attribution (netp) comes from the host-side
+tap/vnet interface \fIIFACE\fR; pass \fB\-c\fR \fIQEMU_SCOPE\fR
+alongside so the other six metrics attribute to the VM's cgroup
+scope.
+.TP
+.B \-\-tap\-iface \fINAME\fR
+Set the host tap/vnet interface for VM netp without changing the
+target kind.
+.TP
+.B \-\-exact
+Leaf-only cgroup matching: attribute only events of tasks in exactly
+the targeted cgroup, not its descendants (default: the whole
+subtree).
+.PP
+With none of these options, the whole system is profiled.
+.SS Sampling
+.TP
+.BR \-i ", " \-\-interval " \fIDURATION\fR"
+Sampling interval (default 1s; accepts \fB2\fR, \fB2s\fR,
+\fB100ms\fR).
+.TP
+.BR \-d ", " \-\-duration " \fIDURATION\fR"
+Stop after this long (default: run until SIGINT).
+.SS Output
+.TP
+.BR \-f ", " \-\-format " \fIFORMAT\fR"
+.B jsonl
+(default): one self-describing JSON object per sample; an unavailable
+metric is omitted from the
+.B metrics
+object.
+.B tsv\-legacy\-v1\fR:
+the seven-column tab-separated format consumed by IADA and the
+across-intp tooling \(em integer percent values, \fB\-\-\fR for
+unavailable, no header.
+.B prometheus\fR:
+Prometheus text exposition written per tick.
+.TP
+.B \-\-print\-schema
+Dump the active schema as JSON Schema (metric catalogue, selected
+backend, semantic model, and rejection reasons per candidate), then
+exit.
+.TP
+.B \-\-serve\fR[=\fIURI\fR]
+Long-running Prometheus exposition endpoint (default
+\fBprometheus://:9100\fR). Requires a build with libmicrohttpd.
+.SS Diagnostics
+.TP
+.B \-\-probe
+Check whether the eBPF backends can work here; the exit code
+distinguishes kernel-too-old (2), not-permitted (3), built-without-
+eBPF (4).
+.TP
+.B \-\-list\-backends
+Print detected hardware capabilities, the selected backend per
+metric, and the full ordered candidate lists, then exit.
+.SS Backend control
+.TP
+.B \-\-disable\-backend \fINAME\fR
+Skip a backend during selection. \fINAME\fR is a backend id
+(\fBresctrl\fR) or \fImetric\fR\fB:\fR\fIid\fR (\fBmbw:resctrl_mbm\fR).
+.TP
+.B \-\-force\-backend \fIM\fR\fB:\fR\fIID\fR
+Force a specific backend for metric \fIM\fR. Falls back to normal
+selection if the forced backend's probe rejects.
+.TP
+.B \-\-disable\-metric \fIM\fR
+Do not collect metric \fIM\fR at all.
+.SS Hardware overrides
+Normalization constants are autodetected; override when detection is
+wrong or for cross-host comparability:
+.B \-\-nic\-speed\-bps\fR,
+.B \-\-mem\-bw\-max\-bps\fR,
+.B \-\-llc\-size\-bytes\fR,
+.B \-\-disk\-bw\-max\-bps\fR,
+.B \-\-iface\fR,
+.B \-\-disk\fR.
+.SS Experimental
+.TP
+.B \-\-experimental
+Opt in to experimental features (see
+.BR "EXPERIMENTAL FEATURES" ).
+.TP
+.B \-\-portable\-metrics
+(Experimental; requires \fB\-\-experimental\fR.) Additionally collect
+the eight VM-portable metrics in the
+.B system.portable.*
+namespace:
+.B schedlat
+(run-queue/scheduling latency),
+.B psi_mem
+(PSI memory-capacity pressure; it does not register memory-bandwidth
+saturation, so never read it as a bandwidth signal),
+.B membw_est
+(DRAM-bandwidth estimate, bytes/s; on network-heavy targets it also
+counts the cache misses of intp's own eBPF network hooks, so treat it as
+uncorroborated when
+.B mbw
+and
+.B llcmr
+read near zero),
+.B psi_io
+(PSI I/O pressure),
+.B schedthr
+(CFS throttling, cgroup-only),
+.B steal
+(hypervisor-stolen vCPU time),
+.B psp
+(involuntary preemption rate, events/s), and
+.B idle_preempt
+(idle-CPU takeover rate; eBPF-only, unavailable on the pure-C
+provider). They appear in
+.B jsonl
+and
+.B prometheus
+output;
+.B tsv\-legacy\-v1
+keeps emitting exactly the seven frozen columns.
+.SH EXPERIMENTAL FEATURES
+Capabilities whose validation verdicts are not yet final ship behind a
+deliberate fence (ADR-0008): they refuse to start without
+.B \-\-experimental
+and exit with status 2, naming what is unvalidated. Currently fenced:
+.B \-\-target\-vm
+(VM targeting) and
+.B \-\-portable\-metrics
+(the
+.B system.portable.*
+metric set), both pending the final verdicts of the portable-metrics
+campaign (across-intp C26, C27; ADR-0012).
+.PP
+Every metric in
+.B \-\-print\-schema
+carries a
+.B stability
+field \(em
+.B stable
+for the seven core metrics,
+.B experimental
+for the portable set \(em so consumers can tell the trusted surface
+from the opt-in one. Experimental output never enters
+.B tsv\-legacy\-v1
+or the frozen
+.B system.interference.*
+namespace, and may change or disappear in a minor release.
+.SH SEMANTIC MODELS
+Two backends of the same metric may measure different latent
+quantities. The selected backend's model is declared in
+.B \-\-print\-schema\fR.
+Notably for
+.BR blk :
+the eBPF backend integrates per-request service time
+(\fBsvctm_busy_fraction\fR, queue-depth aware); the procfs fallback
+reads io_ticks (\fBio_ticks_util\fR, saturates on parallel NVMe);
+the cgroup backend normalizes io.stat throughput
+(\fBcgroup_io_throughput\fR). Compare values across hosts only within
+the same model.
+.SH PRIVILEGES
+netp, nets, blk and cpu collect unprivileged. llcmr needs
+perf_event access (root, CAP_PERFMON, or perf_event_paranoid \(<= 2
+depending on scope). mbw and llcocc need resctrl (root) or uncore PMU
+access. Missing privilege degrades the affected metric to
+.I unavailable
+with the reason recorded in the schema.
+.SH EXIT STATUS
+0 on success; 1 on runtime failure; 2 on usage errors. \fB\-\-probe\fR
+uses 0/2/3/4/5 as described above.
+.SH EXAMPLES
+Profile the whole host once a second, JSONL on stdout:
+.PP
+.nf
+    intp
+.fi
+.PP
+Ten seconds of legacy TSV for an IADA-style consumer:
+.PP
+.nf
+    intp \-f tsv\-legacy\-v1 \-i 1s \-d 10s
+.fi
+.PP
+Profile one process, forcing the resctrl memory-bandwidth backend:
+.PP
+.nf
+    sudo intp \-p 4242 \-\-force\-backend mbw:resctrl_mbm
+.fi
+.SH SEE ALSO
+.BR perf (1),
+.BR pidstat (1),
+.BR iostat (1)
+.PP
+Research repository and artifacts:
+.br
+https://github.com/ggrv\-intp/across\-intp
+.PP
+A. Sacilotto, M. G. Xavier, S. Becker, C. A. F. De Rose, O. Kao,
+"Cross-Application Interference Profiling in Consolidated Cloud
+Servers: Improving Portability, Overhead and Fidelity in IntP",
+SBAC-PAD 2026, to appear.
+.PP
+M. G. Xavier, C. H. C. Cano, V. Meyer, C. A. F. De Rose, "IntP:
+Quantifying cross-application interference via system-level
+instrumentation", SBAC-PAD 2022, pp. 231\(en240,
+doi:10.1109/SBAC\-PAD55451.2022.00034.
+.SH AUTHORS
+Based on IntP (Xavier et al., SBAC-PAD 2022) and its
+modernization in the across-intp research repository (PUCRS).

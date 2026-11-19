@@ -1,7 +1,7 @@
 # clang-format configuration for `intp`.
 #
 # Style is the Linux kernel C style: hard 8-column tabs, 80-column
-# lines, K&R braces. This intentionally matches what `intp-comparison`'s
+# lines, K&R braces. This intentionally matches what `across-intp`'s
 # v2-c-stable-abi expects, so contributors moving between the two
 # repositories don't have to retrain their fingers.
 #

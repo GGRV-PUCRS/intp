@@ -1,7 +1,7 @@
 project(
         'intp',
         'c',
-        version: '0.2.0',
+        version: '0.10.0-beta1',
         license: 'MIT',
         meson_version: '>= 0.61.0',
         default_options: [
@@ -103,9 +103,12 @@ endif
 mhd_dep = dependency('libmicrohttpd', required: opt_prometheus)
 prometheus_enabled = mhd_dep.found() and opt_prometheus
 
-# OpenTelemetry needs protobuf + (optionally) grpc.
-protobuf_dep = dependency('protobuf', required: opt_otel)
-otel_enabled = protobuf_dep.found() and opt_otel
+# OTLP metrics export is OTLP/HTTP + JSON over libcurl (NOT protobuf/gRPC,
+# whose closure the prometheus.c remote_write note forbids dragging into
+# libintp.so). Per ADR-0011 the exporter is compiled into the `intp` CLI
+# only — libcurl never enters libintp.so's dependency closure.
+curl_dep = dependency('libcurl', required: opt_otel)
+otel_enabled = curl_dep.found() and opt_otel
 
 # ---------------------------------------------------------------------------
 # Configuration data (consumed by include/intp/meson.build to generate
@@ -139,9 +142,13 @@ intp_include = include_directories('include')
 # Subdirs (libintp, intp CLI, examples, tests)
 # ---------------------------------------------------------------------------
 
+subdir('src/core')
+subdir('src/backends')
+subdir('src/output')
 subdir('src/lib')
 subdir('src/cli')
 subdir('src/plugins/bpftrace')
+subdir('docs/man')
 
 if opt_examples
         subdir('examples')
@@ -149,6 +156,18 @@ endif
 
 if opt_tests
         subdir('tests')
+
+        # Default test setup: skip the 'live' suite (root + real
+        # kernel + stress-ng; see tests/meson.build). Plain
+        # `meson test -C build` therefore runs unit/plugin-abi/
+        # integration only; opt in to the live gates with
+        #     meson test -C build --setup= --suite live
+        # (an explicit empty --setup= bypasses this default setup).
+        add_test_setup(
+                'default',
+                is_default: true,
+                exclude_suites: ['live'],
+        )
 endif
 
 # ---------------------------------------------------------------------------
@@ -161,7 +180,7 @@ pkg.generate(
         name: 'intp',
         description: 'Linux interference profiler — public C API',
         version: meson.project_version(),
-        url: 'https://github.com/ggrv-intp/intp',
+        url: 'https://github.com/GGRV-PUCRS/intp',
         subdirs: ['intp'],
 )
 

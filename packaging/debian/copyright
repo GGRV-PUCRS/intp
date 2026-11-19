@@ -1,11 +1,28 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: intp
 Upstream-Contact: André Sacilotto Santos <sacilotto.andre@gmail.com>
-Source: https://github.com/ggrv-intp/intp
+Source: https://github.com/GGRV-PUCRS/intp
 
 Files: *
 Copyright: 2022-2026 André Sacilotto Santos
 License: MIT
+
+Files: src/backends/ebpf/vmlinux/*
+Copyright: 1991-2026 Linux kernel contributors
+License: GPL-2.0-only
+Comment: Generated BTF type dump derived from the running Linux kernel
+ (bpftool btf dump file vmlinux format c); the aarch64 dump comes from the
+ BTF embedded in Ubuntu's linux-image-unsigned-6.8.0-139-generic arm64
+ kernel. As a kernel-derived work it is
+ distributed under GPL-2.0-only. It is a build-time CO-RE input only; it is
+ not linked into libintp0 or the intp binary.
+
+Files: src/backends/ebpf/intp_agg.bpf.c src/backends/ebpf/intp_agg.bpf.h
+Copyright: 2022-2026 André Sacilotto Santos
+License: GPL-2.0-only or MIT
+Comment: The compiled BPF object declares a "Dual MIT/GPL" license string so the
+ in-kernel verifier may call GPL-only helpers; the source is dual-licensed and
+ may be used under the terms of either GPL-2.0-only or MIT.
 
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,3 +43,16 @@ License: MIT
  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+License: GPL-2.0-only
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License version 2 as
+ published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ General Public License for more details.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".

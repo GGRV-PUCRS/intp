@@ -2,7 +2,7 @@
 # intp — .gitignore
 #
 # Forward-looking: the code that will land here is being designed in
-# ../intp-comparison and will most likely be a kernel-module-free C utility
+# ../across-intp and will most likely be a kernel-module-free C utility
 # (procfs/perf_event/resctrl) or an eBPF/CO-RE program with libbpf, plus a
 # Debian packaging layer for the PPA → official-package path.
 # =============================================================================
@@ -24,8 +24,12 @@ target/
 # Skeletons produced by `bpftool gen skeleton` from .bpf.o
 *.skel.h
 *.bpf.o
-# vmlinux.h is normally regenerated from /sys/kernel/btf/vmlinux per build host
+# vmlinux.h is normally regenerated from /sys/kernel/btf/vmlinux per
+# build host — but the checked-in per-arch fallback under
+# src/backends/ebpf/vmlinux/ is LOAD-BEARING for chroot/Launchpad
+# builds (no /sys/kernel/btf there) and must stay tracked.
 vmlinux.h
+!src/backends/ebpf/vmlinux/*/vmlinux.h
 
 # --- Compiled intp binaries (created once Stage 2 of ROADMAP lands) ----------
 /intp
@@ -77,8 +81,10 @@ venv/
 *.log
 /results/
 /bench-output/
-core
-core.*
+# Coredump files only — anchored to the repo root so the rule cannot
+# swallow source directories like src/core/.
+/core
+/core.*
 
 # --- Editor / IDE ------------------------------------------------------------
 .idea/
@@ -96,4 +102,21 @@ Thumbs.db
 *.bak.*
 *.orig
 *.pre-*.bak
-.claude/settings.local.json
+
+# --- Debian build via the packaging/debian symlink ----------------------------
+# `debian` at the root is a local symlink to packaging/debian (create it
+# with `ln -s packaging/debian debian` before dpkg-buildpackage); dh's
+# working artifacts land through it into packaging/debian/.
+/debian
+packaging/debian/files
+packaging/debian/*.substvars
+packaging/debian/*.debhelper
+packaging/debian/*.debhelper.log
+packaging/debian/.debhelper/
+packaging/debian/debhelper-build-stamp
+packaging/debian/intp/
+packaging/debian/intp-doc/
+packaging/debian/intp-plugin-bpftrace/
+packaging/debian/libintp0/
+packaging/debian/libintp-dev/
+packaging/debian/tmp/

@@ -270,6 +270,30 @@ below. Requirements:
 
 ---
 
+## In-tree provider: portable metrics
+
+`src/plugins/portable-metrics/` is the one metric provider shipped in
+tree (ADR-0009). It publishes `system.portable.*` behind
+`--experimental --portable-metrics` (ADR-0008): six signals that stay
+observable inside a KVM guest (`schedlat`, `psi_mem`, `membw_est`,
+`psi_io`, `schedthr`, `steal`) and two scheduling-regime rates (`psp`,
+`idle_preempt`; the latter needs eBPF and reads unavailable on the
+pure-C provider). The fence stays in 0.10.0 and lifts per metric once
+the validation verdicts are final (ADR-0012). Two findings from the
+across-intp campaigns bound how to read them:
+
+- **`psi_mem` is not a bandwidth signal.** PSI memory pressure tracks
+  capacity stalls; it does not register memory-bandwidth saturation.
+- **`membw_est` has a net-path caveat** (across-intp C31). On
+  network-heavy targets the eBPF network hooks run per packet in the
+  target cgroup, and their own cache misses are charged to the counter
+  `membw_est` integrates. A reading with `membw_est` > 0 while `mbw` and
+  `llcmr` are near zero is uncorroborated and must not back an absolute
+  bandwidth claim. The seven canonical metrics are unaffected.
+
+Magnitudes of the portable set inside a guest rank workloads but do not
+transfer to host readings.
+
 ## Community plugins
 
 | Plugin name | Author | Repository | License | Status |

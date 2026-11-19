@@ -2,7 +2,7 @@ name: Plugin ABI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/**']
     paths:
       - 'include/intp/plugin.h'
       - 'include/intp/intp.h'
@@ -25,7 +25,7 @@ jobs:
     name: ABI diff vs. baseline
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
               meson ninja-build pkg-config gcc clang \
               libbpf-dev libelf-dev zlib1g-dev libmicrohttpd-dev \
-              libabigail abigail-tools python3
+              abigail-tools python3
 
       - name: Resolve baseline ref
         id: baseline
@@ -57,9 +57,10 @@ jobs:
 
       - name: Dump current ABI
         run: |
+          # libintp.so* matches the symlinks too; abidw takes one ELF file
           abidw --out-file abi-pr.xml \
                 --headers-dir include \
-                build-pr/src/lib/libintp.so* || true
+                "$(readlink -f build-pr/src/lib/libintp.so)" || true
           ls -l abi-pr.xml
 
       - name: Build baseline
@@ -71,9 +72,10 @@ jobs:
 
       - name: Dump baseline ABI
         run: |
+          # libintp.so* matches the symlinks too; abidw takes one ELF file
           abidw --out-file abi-base.xml \
                 --headers-dir baseline/include \
-                build-base/src/lib/libintp.so* || true
+                "$(readlink -f build-base/src/lib/libintp.so)" || true
 
       - name: Run abidiff
         id: diff
@@ -98,7 +100,7 @@ jobs:
 
       - name: Comment ABI summary on PR
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

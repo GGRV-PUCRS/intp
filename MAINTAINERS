@@ -18,7 +18,8 @@
 # the format machine-friendly: one maintainer per line, no blank lines
 # inside the list, comments start with '#'.
 
-André Sacilotto Santos <sacilotto.andre@gmail.com> @AndreSacilotto [lead] -- core, backend/*, plugin-abi, output, packaging/debian, docs
+André Sacilotto Santos <sacilotto.andre@gmail.com> @Saccilotto [lead] -- core, backend/*, plugin-abi, output, packaging/debian, docs
+# (also andre.santos01@edu.pucrs.br for matters connected to PUCRS)
 
 # Open positions (apply via a PR adding yourself + a few months of contributions):
 # - backend/ebpf maintainer

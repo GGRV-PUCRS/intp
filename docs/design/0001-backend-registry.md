@@ -12,7 +12,7 @@ The seven core metrics in `intp` can each be collected from multiple
 kernel/hardware interfaces, and which one is *available* depends on
 the running host: kernel version, BTF presence, hardware vendor,
 process capabilities, sysfs layout. The variants in
-`intp-comparison/` each picked one mechanism per metric and lived with
+`across-intp/` each picked one mechanism per metric and lived with
 the resulting portability ceiling — v0–v1.x demand SystemTap; v2 falls
 back to procfs everywhere; v3 demands eBPF + BTF.
 
@@ -97,7 +97,7 @@ its `probe()` succeeds.
 
 - Registration is via static initialisers in each backend's `.c`
   file (`INTP_BACKEND_REGISTER(...)`), wired by the linker section
-  collection trick used in `intp-comparison/v2-c-stable-abi/`.
+  collection trick used in `across-intp/v2-c-stable-abi/`.
 - Probes must be idempotent and have no side effects; they may run
   multiple times during a session if `intp` is reloaded.
 - When eBPF backends are compiled in but verifier-rejected on the

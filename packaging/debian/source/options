@@ -4,7 +4,9 @@
 # files are present in cwd but not in the orig tarball (gitignore alone
 # is not enough; dpkg-source doesn't read .gitignore).
 #
-#   .claude/    Claude Code per-project local settings
+#   .*/         untracked top-level dot-directories that local editors and
+#               tools create (the only tracked one, .github/, is clean:
+#               make-source-package.sh refuses a dirty tree)
 #   build/      meson out-of-tree build directory (binaries, .ninja_deps,
 #               compiler probe artefacts — none of it source)
-extend-diff-ignore = "^(\.claude|build)/"
+extend-diff-ignore = "^(\.[^/]+|build)/"
