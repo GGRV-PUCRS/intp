@@ -1,6 +1,6 @@
 # intp
 
-<img src="docs/images/intp.png" alt="intP — Linux interference profiler" width="720">
+<img src="docs/images/intp-en.svg" alt="intP — Linux interference profiler" width="720">
 
 **Interference profiling. Precise observability. For Linux.**
 
