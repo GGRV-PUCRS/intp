@@ -11,6 +11,32 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Release workflow.** Tag builds failed before producing anything:
+  the binary jobs asked apt for the virtual `bpftool` package
+  (Ubuntu 24.04), and the source-tarball job lacked libmicrohttpd for
+  `meson setup`. Releases are now created as drafts for the maintainer
+  to sign and publish, and an existing tag can be rebuilt with
+  `workflow_dispatch`.
+- **Repository metadata.** CODEOWNERS and MAINTAINERS name the
+  maintainer's actual GitHub account; links use the organization's
+  current name (`GGRV-PUCRS`) instead of relying on rename redirects;
+  the LICENSE copyright line names the author, as `debian/copyright`
+  already did.
+- **Kernel-compatibility issue form.** Its description was not valid
+  YAML, so GitHub could not offer the form.
+
+### Changed
+
+- The code of conduct is `CODE_OF_CONDUCT.md`, with enforcement
+  contacts; `SECURITY.md` lists the maintainer's addresses and key.
+- README and ROADMAP describe the repository as it is now, and the
+  README install example points at the staging PPA until 0.10.0 is
+  released.
+- GitHub Actions moved to their Node 24 releases; Dependabot keeps
+  them current.
+
 ## [0.10.0-beta1] — 2026-11-18
 
 Beta of 0.10.0, re-synced with across-intp `v0.2.0` (commit

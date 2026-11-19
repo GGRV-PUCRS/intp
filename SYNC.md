@@ -1,6 +1,6 @@
 # SYNC.md — relationship to the research repository
 
-`intp` is the production line. [**across-intp**](https://github.com/ggrv-intp/across-intp)
+`intp` is the production line. [**across-intp**](https://github.com/GGRV-PUCRS/across-intp)
 (formerly intp-comparison) is the public research repository where the
 measured variants, the benchmark campaigns and the papers live: its
 `v0.1.0` release is the SBAC-PAD 2026 artifact and its `v0.2.0` release

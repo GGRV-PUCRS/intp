@@ -4,5 +4,5 @@ version=4
 # pre-release (~) ordering so 0.9.0~rc1 < 0.9.0.
 opts="mode=git, pgpmode=none, \
 uversionmangle=s/(\d)[_.\-]?(alpha|beta|rc|pre|preview)[.\-]?(\d*)$/$1~$2$3/" \
-https://github.com/ggrv-intp/intp.git \
+https://github.com/GGRV-PUCRS/intp.git \
 refs/tags/v?(\d\S+)

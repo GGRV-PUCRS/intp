@@ -102,7 +102,6 @@ Thumbs.db
 *.bak.*
 *.orig
 *.pre-*.bak
-.claude/settings.local.json
 
 # --- Debian build via the packaging/debian symlink ----------------------------
 # `debian` at the root is a local symlink to packaging/debian (create it

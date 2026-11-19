@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: intp
 Upstream-Contact: André Sacilotto Santos <sacilotto.andre@gmail.com>
-Source: https://github.com/ggrv-intp/intp
+Source: https://github.com/GGRV-PUCRS/intp
 
 Files: *
 Copyright: 2022-2026 André Sacilotto Santos

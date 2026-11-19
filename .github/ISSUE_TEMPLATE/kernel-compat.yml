@@ -1,5 +1,5 @@
 name: Kernel compatibility
-description: `intp` fails or degrades on a specific kernel version, vendor patch series, or hardware platform.
+description: "`intp` fails or degrades on a specific kernel version, vendor patch series, or hardware platform."
 title: "kernel: <kernel version / platform> — <short summary>"
 labels: ["area/kernel-compat", "needs-triage"]
 body:
@@ -9,7 +9,7 @@ body:
         Kernel evolution is the long pole for this project. Reports here
         feed the kernel-compat matrix in
         [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) and the
-        version notes in [VERSIONS.md](https://github.com/ggrv-intp/across-intp/blob/main/VERSIONS.md)
+        version notes in [VERSIONS.md](https://github.com/GGRV-PUCRS/across-intp/blob/main/VERSIONS.md)
         of the comparison repo.
 
   - type: input

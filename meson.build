@@ -180,7 +180,7 @@ pkg.generate(
         name: 'intp',
         description: 'Linux interference profiler — public C API',
         version: meson.project_version(),
-        url: 'https://github.com/ggrv-intp/intp',
+        url: 'https://github.com/GGRV-PUCRS/intp',
         subdirs: ['intp'],
 )
 

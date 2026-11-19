@@ -15,7 +15,7 @@
 
 [Unit]
 Description=intp interference profiler (Prometheus exposition)
-Documentation=man:intp(1) https://github.com/ggrv-intp/intp
+Documentation=man:intp(1) https://github.com/GGRV-PUCRS/intp
 After=network.target
 
 [Service]

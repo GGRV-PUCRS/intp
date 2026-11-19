@@ -9,8 +9,8 @@ to track kernel evolution and to harmonise across variants.
 This document is the canonical, slim reference. The deep, line-by-line
 walkthrough — kernel probes, normalisation formulas, hardware
 constants, kernel-version specifics — lives in
-[`across-intp/docs/METRICS-DEEP-DIVE.md`](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md)
-and [`across-intp/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/across-intp/blob/main/METRICS-ALIGNMENT.md).
+[`across-intp/docs/METRICS-DEEP-DIVE.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md)
+and [`across-intp/METRICS-ALIGNMENT.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/METRICS-ALIGNMENT.md).
 Treat those as the source of truth; this document is the index.
 
 ---
@@ -179,7 +179,7 @@ is the single source of truth for hardware capability probing. It
 emits a shell-sourceable file that the build and runtime read.
 
 The full hardware compatibility matrix is in
-[`across-intp/docs/HARDWARE-COMPATIBILITY.md`](https://github.com/ggrv-intp/across-intp/blob/main/docs/HARDWARE-COMPATIBILITY.md).
+[`across-intp/docs/HARDWARE-COMPATIBILITY.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/HARDWARE-COMPATIBILITY.md).
 
 ---
 
@@ -214,7 +214,7 @@ groups are mutually exclusive — a PID can be in exactly one
 ## Cross-variant equivalence (heritage from `across-intp`)
 
 The metric definitions above are the *aligned* ones documented in
-[`across-intp/METRICS-ALIGNMENT.md`](https://github.com/ggrv-intp/across-intp/blob/main/METRICS-ALIGNMENT.md).
+[`across-intp/METRICS-ALIGNMENT.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/METRICS-ALIGNMENT.md).
 That file documents the small patches applied across variants to
 harmonise post-kernel-6.8 behaviour:
 
