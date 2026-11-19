@@ -9,7 +9,7 @@
 ## Context
 
 The dissertation comparison
-([`across-intp/docs/VARIANT-COMPARISON.md`](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md))
+([`across-intp/docs/VARIANT-COMPARISON.md`](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/VARIANT-COMPARISON.md))
 shows that the eBPF variant (v3) achieves the highest metric fidelity
 at the lowest runtime overhead, but that it requires:
 

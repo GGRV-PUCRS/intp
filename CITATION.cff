@@ -17,7 +17,7 @@ authors:
     given-names: "André"
     affiliation: "School of Technology, Pontifícia Universidade Católica do Rio Grande do Sul (PUCRS)"
     orcid: "https://orcid.org/0000-0002-1639-3238"
-repository-code: "https://github.com/ggrv-intp/intp"
+repository-code: "https://github.com/GGRV-PUCRS/intp"
 license: MIT
 type: software
 keywords:
@@ -75,7 +75,7 @@ references:
     authors:
       - family-names: "Sacilotto"
         given-names: "André"
-    repository-code: "https://github.com/ggrv-intp/across-intp"
+    repository-code: "https://github.com/GGRV-PUCRS/across-intp"
     version: "0.2.0"
   # Listed once submitted, as status "submitted":
   # - type: article

@@ -31,7 +31,7 @@ jobs:
               libbpf-dev libelf-dev zlib1g-dev libmicrohttpd-dev \
               python3
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Bail out cleanly if packaging/ is not present yet
         id: precheck
@@ -76,7 +76,7 @@ jobs:
 
       - name: Upload lintian artefacts on failure
         if: failure() && steps.precheck.outputs.skipped != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debs
           path: debs/*.deb

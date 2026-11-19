@@ -15,16 +15,23 @@ use one of the private channels below.
 ### Preferred: GitHub Security Advisories
 
 Open a private advisory at
-<https://github.com/ggrv-intp/intp/security/advisories/new>. This is
+<https://github.com/GGRV-PUCRS/intp/security/advisories/new>. This is
 encrypted, audited, and lets us coordinate a fix and disclosure
 timeline before the report becomes public.
 
 ### Email
 
-If you cannot use GitHub Security Advisories, email the maintainer
-listed in [MAINTAINERS](MAINTAINERS) directly with
-`[intp-security]` in the subject line. PGP welcome but not required;
-include a short summary in the body and attach details as needed.
+If you cannot use GitHub Security Advisories, email the maintainer,
+André Sacilotto Santos, with `[intp-security]` in the subject line:
+
+- **andre.santos01@edu.pucrs.br** if the report comes through PUCRS
+  or concerns a deployment there;
+- **sacilotto.andre@gmail.com** otherwise.
+
+PGP is welcome but not required; the maintainer's key is
+`DFE7 C278 469B E9D9 DA95  33DF 9D75 E2B4 064C 5643` (on
+keyserver.ubuntu.com, and the key that signs the PPA uploads). Include
+a short summary in the body and attach details as needed.
 
 ### What to include
 

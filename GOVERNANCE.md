@@ -95,9 +95,9 @@ in the GitHub issue or PR. If that doesn't resolve it:
 
 1. The lead maintainer makes a call and explains the reasoning in
    writing.
-2. If the disagreement is about Code of Conduct ([code_of_conduct.txt](code_of_conduct.txt)),
-   it is handled by the maintainers privately, per the enforcement
-   contact in [SECURITY.md](SECURITY.md).
+2. If the disagreement is about the Code of Conduct
+   ([CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)), it is handled privately
+   through the enforcement contacts listed there.
 3. Persistent technical disagreement that cannot be resolved by the
    lead maintainer goes to a council vote (Phase 1+) or stays at
    "no" (Phase 0).
@@ -107,7 +107,8 @@ in the GitHub issue or PR. If that doesn't resolve it:
 ## Communication
 
 - Public technical discussion: GitHub Issues / Discussions / PRs.
-- Private maintainer matters (security, CoC, personnel): the
-  enforcement contact in [SECURITY.md](SECURITY.md).
+- Private maintainer matters: security reports per
+  [SECURITY.md](SECURITY.md); conduct reports per
+  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 - Release announcements: GitHub Releases page + the `intp-announce`
   channel referenced in the README once it exists.

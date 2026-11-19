@@ -117,7 +117,8 @@ static const char usage_text[] =
 	"exit\n"
 	"  -h, --help                 print this help and exit\n"
 	"\n"
-	"For documentation see intp(1) or https://github.com/ggrv-intp/intp.\n";
+	"For documentation see intp(1) or "
+	"https://github.com/GGRV-PUCRS/intp.\n";
 
 static void print_version(void)
 {
@@ -150,7 +151,7 @@ static void print_version(void)
 #endif
 	printf("\n");
 	printf("intp is the production successor to across-intp "
-	       "(https://github.com/ggrv-intp/across-intp).\n");
+	       "(https://github.com/GGRV-PUCRS/across-intp).\n");
 	printf("License: MIT. See LICENSE in the source distribution.\n");
 }
 

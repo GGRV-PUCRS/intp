@@ -8,10 +8,11 @@
 > someone's `git clone && make`. The road from one to the other is
 > long, well-trodden, and worth walking carefully."*
 
-This document traces the path from the current state — a public
-placeholder repository — to the long-term goal of `intp` being
+This document traces the path from where this repository started — a
+public name reservation — to the long-term goal of `intp` being
 available as `sudo apt install intp` on mainstream Linux
-distributions.
+distributions. Today it carries the working profiler, and 0.10.0 is on
+its way through the PPA (Stage 4).
 
 It is written in stages. Each stage has a **gate** (what must be true
 before moving on), an **artefact** (what gets produced), and an
@@ -25,10 +26,10 @@ README applies to every single stage.
 > **Status: complete.**
 
 **Gate:** the GitHub repository
-[`ggrv-intp/intp`](https://github.com/ggrv-intp/intp) exists, is
+[`GGRV-PUCRS/intp`](https://github.com/GGRV-PUCRS/intp) exists, is
 public, and links unambiguously to the source-of-truth research
 repository
-[`ggrv-intp/across-intp`](https://github.com/ggrv-intp/across-intp).
+[`GGRV-PUCRS/across-intp`](https://github.com/GGRV-PUCRS/across-intp).
 
 **Artefact:** this README and these documents.
 
@@ -71,7 +72,7 @@ on:
 **What could stall it:** an unexpected fidelity gap that forces a
 hybrid (v2 + selective eBPF probes), which would push the convergence
 date back. The
-[VARIANT-COMPARISON](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md)
+[VARIANT-COMPARISON](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/VARIANT-COMPARISON.md)
 document tracks the live state of this analysis.
 
 ---
@@ -290,7 +291,7 @@ available externally.
 
 The dissertation defense (expected March 2027) will produce the
 canonical academic reference. Until then, the
-[`CITATION.cff`](https://github.com/ggrv-intp/across-intp/blob/main/CITATION.cff)
+[`CITATION.cff`](https://github.com/GGRV-PUCRS/across-intp/blob/main/CITATION.cff)
 in `across-intp` is the source of truth for citing this work.
 
 ### Naming and namespace
@@ -314,13 +315,13 @@ that delivers the seven metrics reliably.
 ## Tracking progress
 
 Stage transitions will be reflected as releases on the
-[GitHub releases page](https://github.com/ggrv-intp/intp/releases)
+[GitHub releases page](https://github.com/GGRV-PUCRS/intp/releases)
 and as updates to the README's *status* badge. The commit history of
 this repository is the public ledger of the journey.
 
-If you are reading this and the README still says **public placeholder**,
-we are still on Stage 0. That is fine. Some roads are worth walking
-slowly.
+The README's status badge shows the current release; the stage marked
+*in progress* above is where the project stands. Some roads are worth
+walking slowly.
 
 ---
 

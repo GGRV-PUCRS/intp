@@ -47,7 +47,7 @@ jobs:
             compiler: gcc
             ebpf: auto
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload meson logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: meson-logs-${{ matrix.ubuntu }}-${{ matrix.compiler }}-ebpf-${{ matrix.ebpf }}
           path: build/meson-logs/
@@ -113,7 +113,7 @@ jobs:
     name: Ubuntu 22.04 • eBPF=enabled (must fail loud)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -173,7 +173,7 @@ jobs:
     container:
       image: ${{ matrix.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: ${{ matrix.install }}
@@ -204,7 +204,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

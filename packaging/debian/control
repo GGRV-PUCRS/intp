@@ -15,9 +15,9 @@ Build-Depends:
  libmicrohttpd-dev,
  python3,
 Standards-Version: 4.7.0
-Homepage: https://github.com/ggrv-intp/intp
-Vcs-Git: https://github.com/ggrv-intp/intp.git
-Vcs-Browser: https://github.com/ggrv-intp/intp
+Homepage: https://github.com/GGRV-PUCRS/intp
+Vcs-Git: https://github.com/GGRV-PUCRS/intp.git
+Vcs-Browser: https://github.com/GGRV-PUCRS/intp
 Rules-Requires-Root: no
 
 Package: intp

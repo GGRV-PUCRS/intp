@@ -9,7 +9,7 @@ binaries, see your distribution's package manager —
 ## At a glance
 
 ```bash
-git clone https://github.com/ggrv-intp/intp.git
+git clone https://github.com/GGRV-PUCRS/intp.git
 cd intp
 meson setup build
 meson compile -C build

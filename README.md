@@ -6,6 +6,7 @@
 
 <p align="center">
   <img alt="status" src="https://img.shields.io/badge/release-0.10.0--beta1-orange?style=flat-square">
+  <a href="https://launchpad.net/~norohim/+archive/ubuntu/intp-staging"><img alt="PPA" src="https://img.shields.io/badge/PPA-norohim%2Fintp--staging-E95420?style=flat-square&logo=ubuntu&logoColor=white"></a>
   <img alt="destination" src="https://img.shields.io/badge/destination-PPA%20%E2%86%92%20official%20package-success?style=flat-square">
   <img alt="kernel" src="https://img.shields.io/badge/Linux-kernel%206.8%2B-informational?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
@@ -15,7 +16,7 @@
 
 > **This repository carries the working profiler.** The engine was
 > designed, compared, and hardened across measured variants in
-> **[across-intp](https://github.com/ggrv-intp/across-intp)**
+> **[across-intp](https://github.com/GGRV-PUCRS/across-intp)**
 > (formerly intp-comparison; SBAC-PAD 2026), ported here in June 2026
 > and re-synced with across-intp `v0.2.0` for release 0.10.0 — see
 > [SYNC.md](SYNC.md) for the provenance map and
@@ -35,8 +36,9 @@ cache, memory bandwidth, block I/O, and network. In production. Without
 assembling a zoo of tools.
 
 ```bash
-# today, on Ubuntu 22.04, 24.04 and 26.04
-sudo add-apt-repository ppa:norohim/intp
+# Ubuntu 22.04, 24.04 and 26.04: the 0.10.0 beta, from the staging PPA
+# (ppa:norohim/intp receives 0.10.0 once it passes the release gate)
+sudo add-apt-repository ppa:norohim/intp-staging
 sudo apt install intp
 intp -p $(pgrep -f my-application) -i 100ms
 ```
@@ -74,7 +76,7 @@ CPU and memory reference loads.
 guest and two scheduling-regime rates — pending final validation
 verdicts ([PLUGINS.md](docs/PLUGINS.md)).
 The technical deep-dive lives in
-[METRICS-DEEP-DIVE](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md).
+[METRICS-DEEP-DIVE](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md).
 
 ## Why this exists
 
@@ -97,7 +99,7 @@ between *"this metric is high"* and *"this is hurting the neighbour"*.
 ## Relationship with `across-intp`
 
 The sibling repository
-[`across-intp`](https://github.com/ggrv-intp/across-intp) is the
+[`across-intp`](https://github.com/GGRV-PUCRS/across-intp) is the
 test bench. Eleven implementations coexist there, each a different
 combination of instrumentation paradigm, cost, portability, and
 fidelity:
@@ -128,8 +130,8 @@ became `intp`.
 
 ## Roadmap to the official package
 
-The journey from "GitHub placeholder" to `sudo apt install intp` has
-well-defined stops. The full breakdown lives in
+The journey from a name reservation on GitHub to `sudo apt install intp`
+has well-defined stops. The full breakdown lives in
 [docs/ROADMAP.md](docs/ROADMAP.md); at a glance:
 
 1. **Public name reservation** — done.
@@ -160,8 +162,11 @@ sudo add-apt-repository ppa:norohim/intp
 sudo apt install intp
 ```
 
-- Use only `ppa:norohim/intp`. `ppa:norohim/intp-staging` holds
-  betas, release candidates and untested builds.
+- [`ppa:norohim/intp`](https://launchpad.net/~norohim/+archive/ubuntu/intp)
+  carries releases that passed the RDT-testbed gate; until 0.10.0
+  lands there it holds only the old placeholder.
+  [`ppa:norohim/intp-staging`](https://launchpad.net/~norohim/+archive/ubuntu/intp-staging)
+  holds betas, release candidates and untested builds.
 - **0.10.0-beta1** is published to `ppa:norohim/intp-staging` only. It
   has not passed the RDT-testbed release gate; try it with
   `sudo add-apt-repository ppa:norohim/intp-staging`, and expect 0.10.0
@@ -179,11 +184,11 @@ Building from source: [docs/BUILDING.md](docs/BUILDING.md).
 ## How to follow along
 
 The research record, benchmark campaigns, and historical variants live in
-[`across-intp`](https://github.com/ggrv-intp/across-intp) —
+[`across-intp`](https://github.com/GGRV-PUCRS/across-intp) —
 home of the variants, the benchmarks, and the technical documents
-([METRICS-DEEP-DIVE](https://github.com/ggrv-intp/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md),
-[KERNEL-6.8-CHANGES](https://github.com/ggrv-intp/across-intp/blob/main/docs/KERNEL-6.8-CHANGES.md),
-[VARIANT-COMPARISON](https://github.com/ggrv-intp/across-intp/blob/main/docs/VARIANT-COMPARISON.md)).
+([METRICS-DEEP-DIVE](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/METRICS-DEEP-DIVE.md),
+[KERNEL-6.8-CHANGES](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/KERNEL-6.8-CHANGES.md),
+[VARIANT-COMPARISON](https://github.com/GGRV-PUCRS/across-intp/blob/main/docs/VARIANT-COMPARISON.md)).
 
 Local documentation:
 
@@ -201,7 +206,7 @@ the metadata, and the DOI will be added upon publication:
 > SBAC-PAD 2026, Madrid, Spain. IEEE. To appear.
 
 The research artifacts are the releases of
-[across-intp](https://github.com/ggrv-intp/across-intp): `v0.1.0` for
+[across-intp](https://github.com/GGRV-PUCRS/across-intp): `v0.1.0` for
 the SBAC-PAD 2026 paper, `v0.2.0` for the container and VM deployment
 study. The dissertation reference will be added after the defense,
 expected in **March 2027**.

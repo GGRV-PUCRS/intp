@@ -141,7 +141,7 @@ that descend from v3.3, selected by the SBAC-PAD 2026 comparison and
 packaged for Ubuntu in `ppa:norohim/intp`. The research record — the
 eleven implementation variants, the benchmarks that compare them, and
 the technical documents that justify the design choices — stays in
-[`across-intp`](https://github.com/ggrv-intp/across-intp).
+[`across-intp`](https://github.com/GGRV-PUCRS/across-intp).
 
 The road ahead is the one described in [ROADMAP.md](ROADMAP.md): from
 the PPA to Debian, Ubuntu universe and the other distributions.

@@ -216,7 +216,26 @@ suffixes because `~` is illegal in git refnames (`debian/watch`
 mangles the suffix back to `~rc1` for Debian ordering). The tags
 `v0.1.0-placeholder2` and `v0.2.0-placeholder` mark PPA states;
 `v0.9.0-rc1` and `v0.9.0` mark gated commits that were never
-published. `release.yml` fires on any `v*` tag.
+published. Sign release tags (`git tag -s`) with the same key that
+signs the PPA uploads, so `debian/watch` (which tracks tags) can later
+verify them with `pgpmode=gittag`.
+
+**GitHub release.** `release.yml` fires on any `v*` tag and creates a
+*draft* release: tags with a `-` suffix are marked as pre-releases,
+the notes come from the tag's `CHANGELOG.md` section, and the assets
+are the two binary tarballs and the `meson dist` source tarball, each
+with a `.sha256`. Before publishing the draft:
+
+```bash
+# attach the orig tarball the PPA uploads were built from (see
+# "Tarball discipline") and detached signatures for the tarballs
+gpg --armor --detach-sign ../intp_0.10.0.orig.tar.gz
+gh release upload v0.10.0 ../intp_0.10.0.orig.tar.gz ../intp_0.10.0.orig.tar.gz.asc
+gh release edit v0.10.0 --draft=false
+```
+
+For a tag pushed while the workflow was broken, rebuild the draft with
+the current workflow: `gh workflow run release.yml -f tag=v0.10.0-beta1`.
 
 Notes for the Launchpad build environment:
 
@@ -253,7 +272,7 @@ Version:        0.1.0
 Release:        1%{?dist}
 Summary:        Linux interference profiler
 License:        MIT
-URL:            https://github.com/ggrv-intp/intp
+URL:            https://github.com/GGRV-PUCRS/intp
 Source0:        %{url}/archive/v%{version}/intp-%{version}.tar.gz
 
 BuildRequires:  meson ninja-build clang
@@ -297,7 +316,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Linux interference profiler"
 arch=('x86_64' 'aarch64')
-url='https://github.com/ggrv-intp/intp'
+url='https://github.com/GGRV-PUCRS/intp'
 license=('MIT')
 depends=('libbpf' 'libelf' 'zlib' 'libmicrohttpd')
 makedepends=('meson' 'ninja' 'clang' 'bpf')
@@ -358,16 +377,20 @@ function for build-determinism cleanups; we welcome bug reports here.
 
 ## Static-binary release
 
-GitHub Actions release workflow builds:
+The release workflow builds, on Ubuntu 24.04 runners:
 
-- `intp-static-x86_64-linux.tar.gz` — fully static, glibc-linked.
-- `intp-static-aarch64-linux.tar.gz` — same, cross-built.
-- `intp-static-x86_64-linux-musl.tar.gz` — musl-static.
+- `intp-<version>-x86_64-linux.tar.gz`
+- `intp-<version>-aarch64-linux.tar.gz`
 
-These are signed with a release-time GPG key (the public key is in
-the GitHub release notes) and are intended as *fallbacks*. Users
-running these miss out on distro-managed updates; we recommend the
-distro package whenever possible.
+Each holds the `intp` binary with libintp linked in statically
+(`-Dwith_static=true`); it still links dynamically against glibc,
+libbpf, libelf, zlib and libmicrohttpd, so it runs on Ubuntu 24.04 or
+a newer system with those libraries. A fully static or musl build is
+not produced yet. The tarballs carry `.sha256` files, and the
+maintainer adds `.asc` signatures before publishing the release (see
+"GitHub release" above). They are *fallbacks*: users running them miss
+out on distro-managed updates, so prefer the distro package whenever
+possible.
 
 ---
 
