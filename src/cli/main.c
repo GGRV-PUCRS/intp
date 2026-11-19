@@ -117,7 +117,8 @@ static const char usage_text[] =
 	"exit\n"
 	"  -h, --help                 print this help and exit\n"
 	"\n"
-	"For documentation see intp(1) or https://github.com/GGRV-PUCRS/intp.\n";
+	"For documentation see intp(1) or "
+	"https://github.com/GGRV-PUCRS/intp.\n";
 
 static void print_version(void)
 {
