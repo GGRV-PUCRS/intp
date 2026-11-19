@@ -198,12 +198,14 @@ Local documentation:
 ## Citation
 
 Please cite the SBAC-PAD 2026 paper; [CITATION.cff](CITATION.cff) has
-the metadata, and the DOI will be added upon publication:
+the metadata (the DOI follows once IEEE Xplore indexes the paper):
 
 > A. Sacilotto, M. G. Xavier, S. Becker, C. A. F. De Rose and O. Kao.
 > *Cross-Application Interference Profiling in Consolidated Cloud
 > Servers: Improving Portability, Overhead and Fidelity in IntP*.
-> SBAC-PAD 2026, Madrid, Spain. IEEE. To appear.
+> In: 38th IEEE/SBC International Symposium on Computer Architecture
+> and High Performance Computing (SBAC-PAD 2026), Madrid, Spain. IEEE,
+> 2026, pp. 242–252.
 
 The research artifacts are the releases of
 [across-intp](https://github.com/GGRV-PUCRS/across-intp): `v0.1.0` for

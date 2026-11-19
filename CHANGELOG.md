@@ -36,6 +36,9 @@ in any minor release and will be flagged in the relevant section below.
   released.
 - GitHub Actions moved to their Node 24 releases; Dependabot keeps
   them current.
+- The SBAC-PAD 2026 paper is published (pp. 242–252): README,
+  CITATION.cff and intp(1) cite it with pages instead of "to appear";
+  the manpage links across-intp under the organization's current name.
 
 ## [0.10.0-beta1] — 2026-11-18
 
