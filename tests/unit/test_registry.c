@@ -12,6 +12,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "../../src/core/core.h"
@@ -95,8 +96,42 @@ static const struct intp_core_backend fake_lo = {
 	.cleanup = cleanup_noop,
 };
 
+/* eBPF-lineage fake (ADR-0013): sorts before fake_hi (same priority,
+ * lower chain_order). Its probe fails by default so the selection tests
+ * above it are unaffected; the engine/defer tests switch it on. */
+static int fake_ebpf_probe_rc = -1;
+static const char *fake_ebpf_defer_reason;
+
+static int fake_ebpf_probe(void)
+{
+	return fake_ebpf_probe_rc;
+}
+
+static const char *fake_ebpf_defer(void)
+{
+	return fake_ebpf_defer_reason;
+}
+
+static const struct intp_core_backend fake_ebpf = {
+	.metric = "netp",
+	.id = "fake_ebpf",
+	.description = "test backend, eBPF lineage",
+	.model = "test",
+	.scope = "system",
+	.requires = "fake_ebpf probe must pass",
+	.priority = INTP_PRIORITY_HIGHEST,
+	.chain_order = -1,
+	.lineage = INTP_LINEAGE_EBPF,
+	.defer = fake_ebpf_defer,
+	.probe = fake_ebpf_probe,
+	.init = init_ok,
+	.read = fake_lo_read,
+	.cleanup = cleanup_noop,
+};
+
 INTP_BACKEND_REGISTER(fake_hi);
 INTP_BACKEND_REGISTER(fake_lo);
+INTP_BACKEND_REGISTER(fake_ebpf);
 
 /* The eBPF backends register at INTP_PRIORITY_HIGH and, on a root + BTF
  * host, their probe passes and they win selection: ebpf_bytes sorts
@@ -187,7 +222,15 @@ int main(void)
 	INTP_EXPECT_NOT_NULL(netp->active);
 	INTP_EXPECT_STREQ(netp->active->id, "fake_lo");
 	INTP_EXPECT(netp->n_rejected >= 1);
-	INTP_EXPECT_STREQ(netp->rejected[0].reason, "fake_hi probe must pass");
+	{
+		const char *hi_reason = NULL;
+
+		for (int r = 0; r < netp->n_rejected; r++)
+			if (netp->rejected[r].backend == &fake_hi)
+				hi_reason = netp->rejected[r].reason;
+		INTP_EXPECT_NOT_NULL(hi_reason);
+		INTP_EXPECT_STREQ(hi_reason, "fake_hi probe must pass");
+	}
 	intp_close(ctx);
 
 	/* --- init failure falls through (probe ok, init fails) --- */
@@ -221,6 +264,71 @@ int main(void)
 	netp = find_sel(ctx, "netp");
 	INTP_EXPECT_STREQ(netp->active->id, "fake_lo");
 	intp_close(ctx);
+
+	/* --- engines and defer (ADR-0013) --- */
+	{
+		static const struct intp_core_force force_ebpf = {
+			.metric = "netp",
+			.backend_id = "fake_ebpf",
+		};
+		struct intp_core_extras ex = {0};
+		bool saw_reason = false;
+
+		fake_ebpf_probe_rc = 0;
+
+		/* AUTO: the passing eBPF-lineage fake wins. */
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &ex, &ctx), 0);
+		netp = find_sel(ctx, "netp");
+		INTP_EXPECT_STREQ(netp->active->id, "fake_ebpf");
+		intp_close(ctx);
+
+		/* AUTO + defer: it steps aside, with the reason recorded. */
+		fake_ebpf_defer_reason = "test defer";
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &ex, &ctx), 0);
+		netp = find_sel(ctx, "netp");
+		INTP_EXPECT_STREQ(netp->active->id, "fake_hi");
+		for (int r = 0; r < netp->n_rejected; r++)
+			if (netp->rejected[r].backend == &fake_ebpf &&
+			    strcmp(netp->rejected[r].reason, "test defer") == 0)
+				saw_reason = true;
+		INTP_EXPECT(saw_reason);
+		intp_close(ctx);
+
+		/* EBPF engine ignores defer and drops stable-only backends:
+		 * cpu's real chain is stable-only once ebpf_sched is off. */
+		ex.engine = INTP_ENGINE_EBPF;
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &ex, &ctx), 0);
+		netp = find_sel(ctx, "netp");
+		INTP_EXPECT_STREQ(netp->active->id, "fake_ebpf");
+		cpu = find_sel(ctx, "cpu");
+		INTP_EXPECT(cpu->active == NULL);
+		intp_close(ctx);
+		fake_ebpf_defer_reason = NULL;
+
+		/* STABLE engine excludes the eBPF lineage... */
+		ex.engine = INTP_ENGINE_STABLE;
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &ex, &ctx), 0);
+		netp = find_sel(ctx, "netp");
+		INTP_EXPECT_STREQ(netp->active->id, "fake_hi");
+		cpu = find_sel(ctx, "cpu");
+		INTP_EXPECT_STREQ(cpu->active->id, "procfs_system");
+		intp_close(ctx);
+
+		/* ...but an operator force overrides the engine. */
+		ex.forces = &force_ebpf;
+		ex.n_forces = 1;
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &ex, &ctx), 0);
+		netp = find_sel(ctx, "netp");
+		INTP_EXPECT_STREQ(netp->active->id, "fake_ebpf");
+		intp_close(ctx);
+
+		/* An unknown engine value is rejected. */
+		struct intp_core_extras bad = {.engine = 99};
+
+		INTP_EXPECT_EQ(intp_core_open_ex(&OPTS_EBPF_OFF, &bad, &ctx),
+			       -EINVAL);
+		fake_ebpf_probe_rc = -1;
+	}
 
 	return INTP_TEST_END();
 }

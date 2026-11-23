@@ -54,14 +54,17 @@ static const char *const metric_descriptions[INTP_CORE_METRICS_COUNT] = {
  * (schedlat psi_mem membw_est psi_io schedthr steal psp idle_preempt;
  * ADR-0009). */
 static const char *const portable_descriptions[INTP_CORE_PORTABLE_COUNT] = {
-	"run-queue/scheduling latency (schedstat run-delay or PSI cpu)",
+	"run-queue/scheduling latency (eBPF wakeup->switch wait, per-thread "
+	"schedstat run-delay, or PSI cpu)",
 	"memory-capacity pressure (PSI memory.pressure 'some')",
 	"DRAM bandwidth estimate (LLC misses x 64B cacheline / interval)",
 	"block I/O pressure (PSI io.pressure 'some')",
 	"CFS bandwidth throttling (cpu.stat throttled_usec, cgroup-only)",
 	"hypervisor-stolen vCPU time (/proc/stat field 8, VM-global)",
-	"involuntary preemption rate (nonvoluntary_ctxt_switches)",
-	"idle-CPU takeover rate (eBPF-only; unavailable on this provider)",
+	"involuntary preemption rate of the target's threads (eBPF "
+	"sched_switch or nonvoluntary_ctxt_switches)",
+	"idle-CPU takeover rate (eBPF sched_switch; unavailable without "
+	"eBPF)",
 };
 
 static int resolve_target(struct intp_ctx *ctx, const struct intp_options *opts)
@@ -191,6 +194,19 @@ int intp_core_open_ex(const struct intp_options *opts,
 
 	intp_core_target_set(&ctx->target);
 
+	/* Engine before the registry: it filters every chain, the
+	 * portable provider's included. */
+	{
+		int e = extras ? extras->engine : INTP_ENGINE_AUTO;
+
+		if (e != INTP_ENGINE_AUTO && e != INTP_ENGINE_STABLE &&
+		    e != INTP_ENGINE_EBPF) {
+			free(ctx);
+			return -EINVAL;
+		}
+		intp_core_engine_set((enum intp_core_engine)e);
+	}
+
 	/* One detection pass before any backend probes; backends read
 	 * the cached result via detect_cached(). */
 	(void)detect_cached();
@@ -220,8 +236,29 @@ int intp_core_open_ex(const struct intp_options *opts,
 		for (size_t i = 0; i < extras->n_forces; i++) {
 			const struct intp_core_force *fc = &extras->forces[i];
 
-			if (intp_core_force_backend(ctx, fc->metric,
-						    fc->backend_id) != 0)
+			int frc = intp_core_force_backend(ctx, fc->metric,
+							  fc->backend_id);
+
+			/* A system.portable.* metric is forced in its
+			 * own provider, below. */
+			if (frc == -ENOENT &&
+			    intp_portable_force(fc->metric, fc->backend_id) ==
+				    0) {
+				if (!ctx->portable_enabled)
+					fprintf(stderr,
+						"intp: --force-backend %s:%s "
+						"needs --experimental "
+						"--portable-metrics\n",
+						fc->metric, fc->backend_id);
+				continue;
+			}
+			if (frc == -ENOENT)
+				fprintf(stderr,
+					"intp: --force-backend %s:%s: no such "
+					"metric or backend (see "
+					"--list-backends)\n",
+					fc->metric, fc->backend_id);
+			else if (frc != 0)
 				fprintf(stderr,
 					"intp: --force-backend %s:%s failed "
 					"(probe rejected); keeping the "
@@ -237,6 +274,8 @@ int intp_core_open_ex(const struct intp_options *opts,
 	 * Metrics that bind nothing read as unavailable, never zero. */
 	if (ctx->portable_enabled)
 		(void)intp_portable_select_and_init();
+	else
+		intp_portable_force_clear();
 
 	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
 		ctx->schema[m].name = intp_core_metric_names[m];
@@ -424,6 +463,8 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 	fprintf(f, " },\n");
 
 	fprintf(f, "  \"interval_ms\": %u,\n", ctx->opts.interval_ms);
+	fprintf(f, "  \"engine\": \"%s\",\n",
+		intp_core_engine_name(intp_core_engine_get()));
 	fprintf(f, "  \"metrics\": {\n");
 
 	for (size_t m = 0; m < INTP_CORE_METRICS_COUNT; m++) {
@@ -490,8 +531,15 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 			fprintf(f, "      \"stability\": \"experimental\",\n");
 			fprintf(f, "      \"description\": \"");
 			json_escape(f, s->description);
-			fprintf(f, "\"\n");
-			fprintf(f, "    }%s\n", (i + 1 < n) ? "," : "");
+			fprintf(f, "\",\n");
+
+			const char *pb = intp_portable_backend(i);
+
+			fprintf(f, "      \"available\": %s",
+				pb ? "true" : "false");
+			if (pb)
+				fprintf(f, ",\n      \"backend\": \"%s\"", pb);
+			fprintf(f, "\n    }%s\n", (i + 1 < n) ? "," : "");
 		}
 	}
 

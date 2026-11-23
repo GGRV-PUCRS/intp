@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only OR MIT */
 /*
  * Ported from across-intp:
- *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.c @ 2e87b30fc762
+ *   variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.c @ a214643cb1be (v0.2.1)
  * BPF programs byte-frozen: no changes other than this header.
  */
 
@@ -463,7 +463,7 @@ int tp_sched_switch(struct trace_event_raw_sched_switch *ctx)
  * sched_wakeup makes a task runnable; we stamp its wakeup time per tid. When
  * the task is later dispatched (sched_switch -> next), we charge the waited
  * interval (now - wakeup_ts) to the INCOMING task's cgroup. RDT/PMU-free and
- * VM-portable: this is Volpert ICPE'25 PSL / runqlat, the metric Paper 1's
+ * VM-portable: run-queue wait as in Volpert ICPE'25 PSL / runqlat, the metric Paper 1's
  * future work names. We use tp_btf/sched_switch so the typed `next`
  * task_struct* is available -- bpf_get_current_cgroup_id() at switch returns
  * PREV, so we read next->cgroups directly via the deferred-context idiom
@@ -511,11 +511,12 @@ int BPF_PROG(tp_schedlat, bool preempt, struct task_struct *prev,
     __u32 next_pid = (__u32)BPF_CORE_READ(next, pid);
     struct intp_config *cfg = intp_cfg();
 
-    /* --- scheduling-regime sub-family (PSP + idle-preempt), VM-portable. Counted
+    /* --- scheduling-regime sub-family (psp + idle_preempt), VM-portable. Counted
      * unconditionally here (the tp_btf/sched_switch handler is already attached for
      * schedlat); userspace emits them only under --portable-metrics, exactly like
      * schedlat, so the canonical 7 stay byte-identical. ---
-     * PSP: prev was preempted (still RUNNABLE) -> involuntary context switch.
+     * psp is not Volpert's PSP (switches to PID 0 as a throttling indicator).
+     * psp: prev was preempted (still RUNNABLE) -> involuntary context switch.
      * Charge to the PREV task's cgroup (the task that got forced off). */
     if (prev_preempted && prev_pid != 0) {
         if (cfg && cfg->system_wide) {

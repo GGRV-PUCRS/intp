@@ -29,6 +29,8 @@ enum intp_ebpf_prog_bit {
 	INTP_EBPF_BLK = 1 << 3,	     /* block_rq_issue + block_rq_complete */
 	INTP_EBPF_CPU = 1 << 4,	     /* sched_switch			   */
 	INTP_EBPF_LLC = 1 << 5,	     /* perf_event LLC refs+misses	   */
+	INTP_EBPF_SCHEDLAT = 1 << 6, /* sched_wakeup{,_new} + tp_schedlat */
+	INTP_EBPF_REGIME = 1 << 7,   /* tp_schedlat (psp + idle_preempt)  */
 };
 
 /* Shim identities for the once-per-tick snapshot consumer mask. */
@@ -38,6 +40,11 @@ enum intp_ebpf_shim {
 	INTP_EBPF_SHIM_BLK,
 	INTP_EBPF_SHIM_LLCMR,
 	INTP_EBPF_SHIM_CPU,
+	/* system.portable.* consumers (ADR-0013) */
+	INTP_EBPF_SHIM_SCHEDLAT,
+	INTP_EBPF_SHIM_PSP,
+	INTP_EBPF_SHIM_IDLE_PREEMPT,
+	INTP_EBPF_SHIM_MEMBW_EST,
 	INTP_EBPF_SHIM_COUNT
 };
 
@@ -57,6 +64,13 @@ int intp_ebpf_program_ok(int bit);
 /* 1 when the loader resolved a cgroup target (shims pick the d_cg /
  * d_global operand exactly as v3.3 compute_sample does). */
 int intp_ebpf_have_cgroup(void);
+
+/* 1 when the target is a PID set (-p / --pids / --comm) with no cgroup.
+ * The BPF programs attribute per cgroup or system-wide only (v3.3 has no
+ * per-PID gate), so in this mode an eBPF backend would silently widen the
+ * scope to the whole host. Shims whose metric has a per-PID stable-ABI
+ * backend step aside (defer) so the PID attribution is kept. */
+int intp_ebpf_pid_target(void);
 
 /* Snapshot accessor: the dispatcher calls the shims sequentially each
  * tick; the loader snapshots the maps ONCE per tick (re-snapshot when a

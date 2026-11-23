@@ -29,6 +29,22 @@ static struct {
 
 static struct intp_core_backend cpu_ebpf_backend;
 
+/* AUTO engine: keep a per-PID target's scope, and inside a KVM guest
+ * prefer the procfs backends: the in-guest eBPF reading depends on the
+ * sampling interval (it credits runtime at switch-out, and a rarely
+ * preempted CPU-bound task is under-counted at short intervals; JSA
+ * section 6.1.2). --force-backend cpu:ebpf_sched or --engine=ebpf keep it. */
+static const char *cpu_ebpf_defer(void)
+{
+	if (intp_ebpf_pid_target())
+		return "per-PID target: eBPF attributes per cgroup or "
+		       "system-wide only, so the per-PID backend is kept";
+	if (detect_cached()->env == ENV_VM)
+		return "inside a KVM guest the eBPF cpu reading depends on the "
+		       "sampling interval; procfs preferred";
+	return NULL;
+}
+
 static int cpu_ebpf_probe(void)
 {
 	if (intp_probe_ebpf() != INTP_PROBE_OK)
@@ -94,6 +110,8 @@ static struct intp_core_backend cpu_ebpf_backend = {
 	.scope = "system",
 	.requires = "requires eBPF (kernel 5.8+, BTF, CAP_BPF or root)",
 	.priority = INTP_PRIORITY_HIGH,
+	.lineage = INTP_LINEAGE_EBPF,
+	.defer = cpu_ebpf_defer,
 	.probe = cpu_ebpf_probe,
 	.init = cpu_ebpf_init,
 	.read = cpu_ebpf_read,

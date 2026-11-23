@@ -72,11 +72,23 @@ int procutil_read_cgroup_procs(const char *cgroup_path, pid_t *out, size_t max);
  * payload in LEAF cgroups (incus/lxc, nested k8s pods), so a
  * non-recursive read of the targeted cgroup misses them. A task lives
  * in exactly one cgroup, so the subtree union is disjoint (no dedup
- * needed). Used for the per-task portable metrics (psp, per-PID
- * schedlat) so they scope the whole container subtree, not just its
- * root. The canonical resctrl path keeps the non-recursive reader
- * (contract-preserving). */
+ * needed). Used for target resolution and the resctrl rescan so a
+ * container whose top cgroup holds no processes is still enrolled. */
 int procutil_read_cgroup_procs_rec(const char *cgroup_path, pid_t *out,
 				   size_t max);
+
+/* Like procutil_read_cgroup_procs_rec, but reads cgroup.threads: every
+ * TID in the subtree, not only thread-group leaders.
+ * /proc/<pid>/schedstat and the *_ctxt_switches lines of
+ * /proc/<pid>/status describe ONE task_struct (fs/proc/base.c
+ * proc_pid_schedstat, fs/proc/array.c task_context_switch_counts), so
+ * per-task scheduler metrics must be read per TID or the worker threads
+ * of a multi-threaded workload are never counted (across-intp C38). */
+int procutil_read_cgroup_threads_rec(const char *cgroup_path, pid_t *out,
+				     size_t max);
+
+/* List the TIDs of process `pid` from /proc/<pid>/task into out[] (up to
+ * max). Returns the count; 0 if the process is gone. */
+int procutil_read_proc_tasks(pid_t pid, pid_t *out, size_t max);
 
 #endif /* INTP_PROCUTIL_H */

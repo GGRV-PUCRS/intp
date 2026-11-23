@@ -124,9 +124,37 @@ const char *intp_core_status_str(enum intp_core_status s);
 /* Backend descriptor and linker-section registration (ADR-0001)             */
 /* ------------------------------------------------------------------------ */
 
+/* Which across-intp lineage a backend reproduces (ADR-0013). A backend
+ * may belong to both: resctrl (mbw/llcocc) and the VM tap netp source are
+ * shared by v2.1 and v3.3. Zero means stable-ABI, so pure-C backends need
+ * no annotation. */
+enum intp_core_lineage {
+	INTP_LINEAGE_STABLE = 1 << 0, /* stable-ABI C, across-intp v2.1 */
+	INTP_LINEAGE_EBPF = 1 << 1,   /* eBPF/CO-RE, across-intp v3.3 */
+};
+
+/* Backend engine selection (--engine). AUTO is the hybrid default: per
+ * metric, the highest-priority backend whose probe passes, eBPF first.
+ * STABLE and EBPF restrict every chain to one lineage, so a run
+ * reproduces one across-intp variant end to end: a metric that lineage
+ * cannot serve reads unavailable instead of borrowing from the other. */
+enum intp_core_engine {
+	INTP_ENGINE_AUTO = 0,
+	INTP_ENGINE_STABLE,
+	INTP_ENGINE_EBPF,
+};
+
+void intp_core_engine_set(enum intp_core_engine e);
+enum intp_core_engine intp_core_engine_get(void);
+const char *intp_core_engine_name(enum intp_core_engine e);
+
+/* 1 if backend lineage bits `lineage` (0 = stable) may run under the
+ * current engine. Shared with the portable-metrics provider. */
+int intp_core_lineage_allowed(unsigned int lineage);
+
 struct intp_core_backend {
-	const char *metric; /* short name: "cpu", "blk", … */
-	const char *id;	    /* backend id: "procfs_system", "resctrl", … */
+	const char *metric;	 /* short name: "cpu", "blk", … */
+	const char *id;		 /* backend id: "procfs_system", "resctrl", … */
 	const char *description; /* one line, for --list-backends */
 	const char *model;	 /* semantic model id (ADR-0010) */
 	const char *scope;	 /* "system" | "pid" | "cgroup" | "vm" */
@@ -138,6 +166,13 @@ struct intp_core_backend {
 	 * may emit file-scope objects in reverse definition order — so
 	 * same-priority chains must set this explicitly. */
 	int chain_order;
+	unsigned int lineage; /* enum intp_core_lineage bits; 0 = stable */
+	/* Optional, AUTO engine only: return a reason (static string) when
+	 * this backend should step aside for a lower-priority one even
+	 * though its probe passes — e.g. an eBPF backend that cannot keep
+	 * a per-PID scope. --force-backend and the STABLE/EBPF engines
+	 * ignore it. NULL = never defers. */
+	const char *(*defer)(void);
 	int (*probe)(void);
 	int (*init)(void);
 	int (*read)(struct intp_core_sample *out, double interval_sec);
@@ -161,10 +196,11 @@ struct intp_core_backend {
  */
 #define INTP_BACKEND_REGISTER(sym)                                              \
 	INTP_SECTION_KEEP                                                       \
-	__attribute__((section("intp_backends"),                                \
-		       aligned(sizeof(                                          \
-			       void *)))) static const struct intp_core_backend \
-		*const sym##_reg = &(sym)
+	__attribute__((                                                         \
+		section("intp_backends"),                                       \
+		aligned(sizeof(                                                 \
+			void *)))) static const struct intp_core_backend *const \
+		sym##_reg = &(sym)
 
 /* ------------------------------------------------------------------------ */
 /* Selection state (per metric, recorded for --print-schema)                 */
@@ -259,6 +295,7 @@ struct intp_core_extras {
 	int exact;	      /* leaf-only cgroup gating (--exact) */
 	int portable_metrics; /* enable the system.portable.* provider
 			       * (requires opts->experimental; ADR-0009) */
+	int engine;	      /* enum intp_core_engine (--engine); 0 = AUTO */
 	/* Multi-PID targets (--pids/--comm): routed around the single-pid
 	 * public option. When given (n_pids > 0) these OVERRIDE the
 	 * single -p pid. */
