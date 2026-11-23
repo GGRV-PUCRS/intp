@@ -15,11 +15,70 @@ concurrency:
 
 jobs:
   # -------------------------------------------------------------------
+  # Change detection. A pull request that only touches documentation,
+  # images or repository metadata skips the build steps below. Every
+  # job still runs and reports, because branch protection requires each
+  # check by name and a skipped matrix job would report under its
+  # unexpanded name instead. Pushes to main always build. The list
+  # names what is NOT code, so an unknown path builds (fail-safe).
+  # -------------------------------------------------------------------
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: diff
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "Not a pull request: full build."
+            exit 0
+          fi
+          base="origin/${GITHUB_BASE_REF}"
+          if ! files=$(git diff --name-only "$base"...HEAD); then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::could not diff against $base; building."
+            exit 0
+          fi
+          code=false
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in
+              # The man page is built and installed by meson.
+              docs/man/*) code=true ;;
+              *.md | docs/* | *.png | *.svg | *.jpg | *.jpeg | *.gif | \
+              LICENSE | CITATION.cff | MAINTAINERS | \
+              .github/CODEOWNERS | .github/ISSUE_TEMPLATE/* | \
+              .github/dependabot.yml) ;;
+              *) code=true ;;
+            esac
+            echo "$f"
+          done <<< "$files"
+          [ -n "$files" ] || code=true
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = true ]; then
+            echo "Code paths changed: full build."
+          else
+            echo "Documentation-only change: build steps are skipped." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # -------------------------------------------------------------------
   # Native Ubuntu — primary build matrix
   # -------------------------------------------------------------------
   build-ubuntu:
     name: Ubuntu ${{ matrix.ubuntu }} • ${{ matrix.compiler }} • eBPF=${{ matrix.ebpf }}
     runs-on: ${{ matrix.runner }}
+    needs: changes
+    env:
+      BUILD: ${{ needs.changes.outputs.code }}
     strategy:
       fail-fast: false
       matrix:
@@ -47,9 +106,15 @@ jobs:
             compiler: gcc
             ebpf: auto
     steps:
+      - name: Documentation-only change
+        if: env.BUILD != 'true'
+        run: echo "No code paths changed; build skipped."
+
       - uses: actions/checkout@v7
+        if: env.BUILD == 'true'
 
       - name: Install build dependencies
+        if: env.BUILD == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -62,6 +127,7 @@ jobs:
               cppcheck shellcheck clang-format
 
       - name: Configure
+        if: env.BUILD == 'true'
         env:
           CC: ${{ matrix.compiler }}
         run: |
@@ -72,25 +138,29 @@ jobs:
               -Dwerror=true 2>&1 | tee meson-setup.log
 
       - name: Verify smart-fallback message (jammy + auto only)
-        if: matrix.ubuntu == '22.04' && matrix.ebpf == 'auto'
+        if: env.BUILD == 'true' && matrix.ubuntu == '22.04' && matrix.ebpf == 'auto'
         run: |
           grep -q 'eBPF backends disabled' meson-setup.log
           grep -q 'PKG_CONFIG_PATH' meson-setup.log
           echo "OK: configure announced the auto-downgrade as expected."
 
       - name: Compile
+        if: env.BUILD == 'true'
         run: meson compile -C build -v
 
       - name: Smoke-test the binary
+        if: env.BUILD == 'true'
         run: |
           ./build/src/cli/intp --version
           ./build/src/cli/intp --help
           ./build/src/cli/intp --print-schema
 
       - name: Run test suite
+        if: env.BUILD == 'true'
         run: meson test -C build --print-errorlogs
 
       - name: Verify pkg-config resolution
+        if: env.BUILD == 'true'
         run: |
           PKG_CONFIG_PATH="$(pwd)/build/meson-private" \
               pkg-config --cflags --libs intp
@@ -112,6 +182,10 @@ jobs:
   build-ubuntu-jammy-fail-loud:
     name: Ubuntu 22.04 • eBPF=enabled (must fail loud)
     runs-on: ubuntu-22.04
+    needs: changes
+    # Not a matrix job, so a job-level skip reports under its real name
+    # and satisfies the required check.
+    if: needs.changes.outputs.code == 'true'
     steps:
       - uses: actions/checkout@v7
 
@@ -146,6 +220,9 @@ jobs:
   build-container:
     name: ${{ matrix.image }} • eBPF=${{ matrix.ebpf }}
     runs-on: ubuntu-24.04
+    needs: changes
+    env:
+      BUILD: ${{ needs.changes.outputs.code }}
     strategy:
       fail-fast: false
       matrix:
@@ -171,14 +248,23 @@ jobs:
                   elfutils-dev zlib-dev libmicrohttpd-dev python3
             ebpf: disabled
     container:
-      image: ${{ matrix.image }}
+      # A docs-only run pulls the small Alpine image instead of the
+      # distro under test; its steps are skipped either way.
+      image: ${{ needs.changes.outputs.code == 'true' && matrix.image || 'alpine:latest' }}
     steps:
+      - name: Documentation-only change
+        if: env.BUILD != 'true'
+        run: echo "No code paths changed; build skipped."
+
       - uses: actions/checkout@v7
+        if: env.BUILD == 'true'
 
       - name: Install build dependencies
+        if: env.BUILD == 'true'
         run: ${{ matrix.install }}
 
       - name: Configure
+        if: env.BUILD == 'true'
         run: |
           meson setup build \
               -Dwith_ebpf=${{ matrix.ebpf }} \
@@ -186,15 +272,18 @@ jobs:
               -Dwith_examples=true
 
       - name: Compile
+        if: env.BUILD == 'true'
         run: meson compile -C build -v
 
       - name: Smoke-test the binary
+        if: env.BUILD == 'true'
         run: |
           ./build/src/cli/intp --version
           ./build/src/cli/intp --help
           ./build/src/cli/intp --print-schema
 
       - name: Run test suite
+        if: env.BUILD == 'true'
         run: meson test -C build --print-errorlogs
 
   # -------------------------------------------------------------------
@@ -203,6 +292,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-24.04
+    needs: changes
+    env:
+      BUILD: ${{ needs.changes.outputs.code }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -212,12 +304,14 @@ jobs:
         run: scripts/check-versions.sh
 
       - name: Install lint dependencies
+        if: env.BUILD == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
               clang-format cppcheck shellcheck
 
       - name: clang-format
+        if: env.BUILD == 'true'
         run: |
           base="origin/${GITHUB_BASE_REF:-main}"
           mapfile -t files < <(git diff --name-only --diff-filter=AM \
@@ -231,6 +325,7 @@ jobs:
           clang-format --dry-run -Werror "${files[@]}"
 
       - name: cppcheck
+        if: env.BUILD == 'true'
         run: |
           cppcheck --enable=warning,style,performance,portability \
                    --error-exitcode=1 --inline-suppr -q \
@@ -241,6 +336,7 @@ jobs:
           # exit-code 1 once Stage 2 lands real code.
 
       - name: shellcheck
+        if: env.BUILD == 'true'
         run: |
           mapfile -t files < <(git ls-files '*.sh' 'tools/*' || true)
           if [ ${#files[@]} -gt 0 ]; then

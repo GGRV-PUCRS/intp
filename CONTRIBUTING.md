@@ -115,6 +115,14 @@ live in `tests/integration/live/` and are gated behind
 `meson test --suite live` because they need root and a recent kernel.
 CI runs them only on the eBPF-enabled job rows.
 
+A pull request that changes only documentation, images or repository
+metadata (`*.md`, `docs/` except the man page, `LICENSE`,
+`CITATION.cff`, issue templates) skips the build and test steps: the
+CI jobs still report, so branch protection is satisfied, and Lint
+still checks that the version sources agree. Any other path runs the
+full matrix. The list lives in the `changes` job of
+`.github/workflows/ci.yml`.
+
 A new metric or backend is **not done** until it has at least one
 fixture-driven unit test and one cross-variant equivalence assertion
 in `tests/regression/`.
