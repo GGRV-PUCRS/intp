@@ -153,8 +153,8 @@ const char *intp_core_engine_name(enum intp_core_engine e);
 int intp_core_lineage_allowed(unsigned int lineage);
 
 struct intp_core_backend {
-	const char *metric;	 /* short name: "cpu", "blk", … */
-	const char *id;		 /* backend id: "procfs_system", "resctrl", … */
+	const char *metric; /* short name: "cpu", "blk", … */
+	const char *id;	    /* backend id: "procfs_system", "resctrl", … */
 	const char *description; /* one line, for --list-backends */
 	const char *model;	 /* semantic model id (ADR-0010) */
 	const char *scope;	 /* "system" | "pid" | "cgroup" | "vm" */
@@ -196,11 +196,10 @@ struct intp_core_backend {
  */
 #define INTP_BACKEND_REGISTER(sym)                                              \
 	INTP_SECTION_KEEP                                                       \
-	__attribute__((                                                         \
-		section("intp_backends"),                                       \
-		aligned(sizeof(                                                 \
-			void *)))) static const struct intp_core_backend *const \
-		sym##_reg = &(sym)
+	__attribute__((section("intp_backends"),                                \
+		       aligned(sizeof(                                          \
+			       void *)))) static const struct intp_core_backend \
+		*const sym##_reg = &(sym)
 
 /* ------------------------------------------------------------------------ */
 /* Selection state (per metric, recorded for --print-schema)                 */
