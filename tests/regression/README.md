@@ -19,7 +19,7 @@ research-repo checkout.
 | What | How | Needs |
 |------|-----|-------|
 | eBPF live suite (load-attach + ctxsw amplification gate ≤ 1.10) | `meson test -C build --setup= --suite live` | root, BTF, stress-ng; `INTP_AMPL_SECONDS` shortens the 90 s window |
-| Self-parity: eBPF vs pure-C backends of the same binary | `tests/regression/xval.sh --self ./build/src/cli/intp` | stress-ng; `INTP_XVAL_SECONDS`, `INTP_XVAL_TOL` (15 pp) |
+| Self-parity: default engine vs `--engine=stable` (and `--engine=ebpf` as root) of the same binary | `tests/regression/xval.sh --self ./build/src/cli/intp` | stress-ng; `INTP_XVAL_SECONDS`, `INTP_XVAL_TOL` (15 pp) |
 | Per-cgroup attribution validation | `sudo tests/regression/validate-attribution.sh ./build/src/cli/intp` | root + cgroup v2 (SKIPs 77 otherwise) |
 | Host capability matrix | `tests/regression/preflight.sh` | nothing (exit 0 all-present / 2 missing) |
 | Release gates, degraded | `bench/gates/run-gates.sh ./build/src/cli/intp` | stress-ng; without resctrl the RDT-backed cells SKIP |

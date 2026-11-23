@@ -61,15 +61,19 @@ endif
 # metrics must be (a) absent from the JSONL stream — never zero — and
 # (b) explained in --print-schema. On resctrl-capable hosts the test
 # SKIPs (exit 77): the positive RDT path belongs to the remote gate.
+# mbw is pinned to its RDT backend: as root the uncore memory-controller
+# counters (perf_uncore_imc and its AMD/ARM peers) would otherwise serve
+# it, and the test is about the RDT path, not about mbw as a whole.
 test('cli/degradation-no-resctrl',
      find_program('sh'),
      args: ['-c', '''
         BIN=@0@
         [ -d /sys/fs/resctrl/mon_groups ] && exit 77
-        OUT=$($BIN -i 200ms -d 1 2>/dev/null)
+        RDT_ONLY="--disable-backend perf_uncore_imc --disable-backend perf_amd_df --disable-backend perf_arm_cmn"
+        OUT=$($BIN $RDT_ONLY -i 200ms -d 1 2>/dev/null)
         echo "$OUT" | grep -q "system.interference.cpu" || exit 1
         echo "$OUT" | grep -q "system.interference.mbw" && exit 1
-        SCHEMA=$($BIN --print-schema)
+        SCHEMA=$($BIN $RDT_ONLY --print-schema)
         echo "$SCHEMA" | grep -A4 "system.interference.mbw" | grep -q "available.: false" || exit 1
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
