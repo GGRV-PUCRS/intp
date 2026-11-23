@@ -29,6 +29,9 @@ in any minor release and will be flagged in the relevant section below.
 
 ### Changed
 
+- Contributions no longer require a DCO sign-off (`git commit -s`):
+  no commit had one and nothing checked it. Opening a pull request
+  accepts the MIT license, as `CONTRIBUTING.md` now says.
 - The code of conduct is `CODE_OF_CONDUCT.md`, with enforcement
   contacts; `SECURITY.md` lists the maintainer's addresses and key.
 - README and ROADMAP describe the repository as it is now, and the

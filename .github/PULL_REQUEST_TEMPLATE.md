@@ -83,7 +83,6 @@ If you ARE breaking something:
 ## Checklist
 
 - [ ] PR title follows [Conventional Commits](https://www.conventionalcommits.org/).
-- [ ] Each commit is signed off (`git commit -s`) per DCO.
 - [ ] Linked issue (`Fixes #`, `Closes #`, `Refs #`) when applicable.
 - [ ] Updated `CHANGELOG.md` under `[Unreleased]` (skip for pure refactors / internal docs).
 - [ ] Added or updated tests covering the change.
