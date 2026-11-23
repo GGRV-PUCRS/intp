@@ -11,9 +11,10 @@ entries to `docs/DECISIONS-container.md`, `S` entries to
 
 ## The contract: pinned re-sync
 
-- **Current pin:** across-intp **`24f26e5a5df1`**, tag `v0.2.0`
-  (2026-09-22), recorded in [ADR-0012](docs/design/0012-resync-across-intp.md)
-  and across-intp D15.
+- **Current pin:** across-intp **`a214643cb1be`**, tag `v0.2.1`
+  (2026-09-30), recorded in [ADR-0013](docs/design/0013-engines-and-resync-v0.2.1.md).
+  The previous pin, `24f26e5a5df1` (tag `v0.2.0`), is recorded in
+  [ADR-0012](docs/design/0012-resync-across-intp.md) and across-intp D15.
 - **History:** the first port was a one-way freeze at **`2e87b30fc762`**
   (branch `feat/container-based-interference`, 2026-06-10, across-intp
   D10). Every ported file carries a provenance header naming its origin
@@ -37,11 +38,17 @@ subtree (v2.1 reads the top cgroup only), marks the guest
 architectural-cache `llcmr` fallback as degraded, and reports where the
 `mbw` ceiling came from.
 
+Recorded in ADR-0013: intp runs both lineages in one binary
+(`--engine auto|stable|ebpf`); under `auto` the eBPF `cpu`, `llcmr` and
+`netp` backends step aside for per-PID targets, and the eBPF `cpu`
+backend inside a KVM guest. `--engine=stable` and `--engine=ebpf`
+reproduce v2.1 and v3.3 without those rules.
+
 ## Provenance map
 
 Origins are paths in across-intp. Each was first ported at
-`2e87b30fc762` and audited unchanged-or-back-ported at the pin
-`24f26e5a5df1` (ADR-0012).
+`2e87b30fc762`, audited at `24f26e5a5df1` (ADR-0012) and again at the
+pin `a214643cb1be` (ADR-0013), where the v0.2.1 changes were ported.
 
 | intp | across-intp origin |
 |---|---|
@@ -61,7 +68,8 @@ Origins are paths in across-intp. Each was first ported at
 | `src/backends/ebpf/intp_agg.bpf.{c,h}` (byte-frozen) | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.{c,h}` |
 | `src/backends/ebpf/ebpf_loader.c` + shims | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.c` (split: skeleton lifecycle / map polling / compute_sample slices) |
 | `src/output/tsv_legacy.c` (rendering) | `variants/v2.1-c-abi-cgroup/intp-hybrid.c` (`emit_tsv`/`format_value`) |
-| `src/plugins/portable-metrics/` | `variants/v2.1-c-abi-cgroup/src/portable.c` |
+| `src/plugins/portable-metrics/` (stable-ABI backends) | `variants/v2.1-c-abi-cgroup/src/portable.c` |
+| `src/plugins/portable-metrics/` (eBPF backends) | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.c` (`--portable-metrics` block of the main loop) |
 | `tests/unit/test_procutil.c`, `test_detect.c` | `variants/v2.1-c-abi-cgroup/tests/` |
 | `tests/regression/xval.sh` | `shared/validate-cross-variant.sh` |
 | `tests/regression/preflight.sh` | `shared/intp-preflight.sh` |

@@ -30,7 +30,9 @@ core backends:
 - Units per the upstream design: percentages for
   schedlat/psi_*/schedthr/steal, MB/s for membw_est, events/s for
   psp/idle_preempt. `idle_preempt` is eBPF-sourced and reports
-  unavailable on the pure-C path, exactly as upstream.
+  unavailable on the pure-C path, exactly as upstream. (ADR-0013 adds
+  the eBPF backends that give it, `schedlat` and `psp` their v3.3
+  values.)
 - Packaged as its own binary package (`intp-plugin-portable`) so the
   default install carries no experimental code.
 

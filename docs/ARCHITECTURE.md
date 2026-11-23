@@ -91,6 +91,17 @@ that:
    sysfs path exists, `perf_event_open` accepted, BTF available, …).
 3. Is not explicitly disabled via `--disable-backend=name` or the
    environment.
+4. Belongs to a lineage the `--engine` allows: `auto` (default) runs
+   both, `stable` only the stable-ABI backends (across-intp v2.1),
+   `ebpf` only the eBPF ones (v3.3). Resctrl belongs to both.
+5. Under `auto`, does not defer: an eBPF backend steps aside when it
+   cannot keep the target's scope (per-PID targets) or, for `cpu`,
+   inside a KVM guest. The reason is recorded like any rejection.
+
+`--force-backend metric:id` binds a named backend directly and skips
+the engine and defer checks. The full rules, with every chain, are in
+[METRICS.md](METRICS.md#backend-selection-per-metric) and
+[ADR-0013](design/0013-engines-and-resync-v0.2.1.md).
 
 A metric whose entire backend list fails to probe is *reported* as
 unavailable in `intp --print-schema` rather than silently zeroed —
