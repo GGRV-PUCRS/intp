@@ -125,16 +125,43 @@ eBPF (4).
 .TP
 .B \-\-list\-backends
 Print detected hardware capabilities, the selected backend per
-metric, and the full ordered candidate lists, then exit.
+metric, and the full ordered candidate lists with each candidate's
+lineage (\fBstable\fR, \fBebpf\fR or \fBboth\fR) and the reason any
+candidate was rejected, then exit. With
+\fB\-\-experimental \-\-portable\-metrics\fR it lists the
+\fBsystem.portable.*\fR chains too.
 .SS Backend control
+.TP
+.B \-\-engine \fIENGINE\fR
+Which backend lineage may run.
+.B auto
+(the default) picks, per metric, the highest-priority backend whose
+probe passes: the eBPF backend where it works, the stable-ABI one
+otherwise. In this mode an eBPF backend also steps aside when it
+cannot keep the target's scope (a \fB\-p\fR/\fB\-\-pids\fR/\fB\-\-comm\fR
+target, which eBPF attributes only per cgroup or system-wide) and, inside
+a KVM guest, for \fBcpu\fR (its in-guest reading depends on the
+sampling interval).
+.B stable
+(alias \fBc\fR, \fBv2.1\fR) runs only the stable-ABI C backends,
+reproducing across-intp v2.1.
+.B ebpf
+(alias \fBv3.3\fR) runs only the eBPF lineage plus the resctrl
+backends v3.3 shares, reproducing across-intp v3.3; it exits with status
+2 when eBPF cannot load. Under a single lineage a metric that lineage
+cannot serve reads unavailable instead of borrowing from the other.
 .TP
 .B \-\-disable\-backend \fINAME\fR
 Skip a backend during selection. \fINAME\fR is a backend id
 (\fBresctrl\fR) or \fImetric\fR\fB:\fR\fIid\fR (\fBmbw:resctrl_mbm\fR).
 .TP
 .B \-\-force\-backend \fIM\fR\fB:\fR\fIID\fR
-Force a specific backend for metric \fIM\fR. Falls back to normal
-selection if the forced backend's probe rejects.
+Force a specific backend for metric \fIM\fR, regardless of
+\fB\-\-engine\fR. \fIM\fR may be a core metric (\fBmbw:resctrl_mbm\fR) or,
+with \fB\-\-portable\-metrics\fR, a portable one
+(\fBschedlat:schedstat_pid\fR). Repeatable. Falls back to normal
+selection if the forced backend's probe or init rejects. Backend ids
+are listed by \fB\-\-list\-backends\fR.
 .TP
 .B \-\-disable\-metric \fIM\fR
 Do not collect metric \fIM\fR at all.
@@ -180,8 +207,8 @@ read near zero),
 .B psp
 (involuntary preemption rate, events/s), and
 .B idle_preempt
-(idle-CPU takeover rate; eBPF-only, unavailable on the pure-C
-provider). They appear in
+(idle-CPU takeover rate; eBPF-only, unavailable without eBPF or under
+\fB\-\-engine=stable\fR). They appear in
 .B jsonl
 and
 .B prometheus
@@ -254,6 +281,16 @@ Profile one process, forcing the resctrl memory-bandwidth backend:
 .PP
 .nf
     sudo intp \-p 4242 \-\-force\-backend mbw:resctrl_mbm
+.fi
+.PP
+Reproduce the two across-intp variants on one container, with all
+fifteen metrics:
+.PP
+.nf
+    sudo intp \-\-engine=stable \-\-experimental \-\-portable\-metrics \\
+        \-c /sys/fs/cgroup/system.slice/docker\-ID.scope
+    sudo intp \-\-engine=ebpf \-\-experimental \-\-portable\-metrics \\
+        \-c /sys/fs/cgroup/system.slice/docker\-ID.scope
 .fi
 .SH SEE ALSO
 .BR perf (1),

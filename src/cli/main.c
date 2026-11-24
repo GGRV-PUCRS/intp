@@ -28,6 +28,7 @@
 #include "../core/core.h"
 #include "../core/detect.h"
 #include "../output/output.h"
+#include "../plugins/portable-metrics/portable.h"
 #include "serve_uri.h"
 #if INTP_HAVE_OTEL
 #include "otlp.h"
@@ -92,9 +93,21 @@ static const char usage_text[] =
 	"                             candidates, then exit\n"
 	"\n"
 	"Backend control:\n"
+	"      --engine ENGINE        auto (default: eBPF where it works, "
+	"stable ABI\n"
+	"                             otherwise), stable (only the C "
+	"backends,\n"
+	"                             across-intp v2.1; alias c) or ebpf "
+	"(only the\n"
+	"                             eBPF lineage, across-intp v3.3; alias "
+	"v3.3)\n"
 	"      --disable-backend NAME force a core backend off (NAME or "
 	"metric:NAME)\n"
-	"      --force-backend M:ID   force a backend, e.g. mbw:resctrl_mbm\n"
+	"      --force-backend M:ID   force a backend, e.g. mbw:resctrl_mbm "
+	"or\n"
+	"                             schedlat:ebpf_schedlat (repeatable; "
+	"overrides\n"
+	"                             --engine for that metric)\n"
 	"      --disable-metric M     skip metric M entirely\n"
 	"\n"
 	"Hardware overrides (0/absent = autodetect):\n"
@@ -208,6 +221,7 @@ enum {
 	OPT_EXACT,
 	OPT_EXPERIMENTAL,
 	OPT_PORTABLE,
+	OPT_ENGINE,
 };
 
 static const struct option long_opts[] = {
@@ -243,8 +257,25 @@ static const struct option long_opts[] = {
 	{"exact", no_argument, NULL, OPT_EXACT},
 	{"experimental", no_argument, NULL, OPT_EXPERIMENTAL},
 	{"portable-metrics", no_argument, NULL, OPT_PORTABLE},
+	{"engine", required_argument, NULL, OPT_ENGINE},
 	{NULL, 0, NULL, 0},
 };
+
+/* --engine NAME -> enum intp_core_engine. "c"/"v2.1" and "v3.3" name the
+ * across-intp variant each engine reproduces. */
+static int parse_engine(const char *s, int *out)
+{
+	if (strcmp(s, "auto") == 0)
+		*out = INTP_ENGINE_AUTO;
+	else if (strcmp(s, "stable") == 0 || strcmp(s, "c") == 0 ||
+		 strcmp(s, "v2.1") == 0)
+		*out = INTP_ENGINE_STABLE;
+	else if (strcmp(s, "ebpf") == 0 || strcmp(s, "v3.3") == 0)
+		*out = INTP_ENGINE_EBPF;
+	else
+		return -1;
+	return 0;
+}
 
 /* Parse "metric:backend_id" for --force-backend (ported parse_force
  * from across-intp intp-hybrid.c @ 2e87b30fc762). */
@@ -275,6 +306,15 @@ static int parse_force(const char *spec, struct intp_core_force *out)
 
 /* Port of the v2.1 --list-backends report: capability dump, selected
  * backend per metric, then the full ordered candidate list. */
+static const char *lineage_tag(unsigned int lineage)
+{
+	if ((lineage & INTP_LINEAGE_STABLE) && (lineage & INTP_LINEAGE_EBPF))
+		return "both";
+	if (lineage & INTP_LINEAGE_EBPF)
+		return "ebpf";
+	return "stable";
+}
+
 static int run_list_backends(struct intp_ctx *ctx)
 {
 	print_capabilities(detect_cached(), stdout);
@@ -297,10 +337,37 @@ static int run_list_backends(struct intp_ctx *ctx)
 			const struct intp_core_backend *b = sel->candidates[j];
 			const char *mark = (sel->active == b) ? "*" : " ";
 
-			printf("  %s %-22s %s\n", mark, b->id,
+			printf("  %s %-22s %-6s %s\n", mark, b->id,
+			       lineage_tag(b->lineage),
 			       b->description ? b->description : "");
+			for (int r = 0; r < sel->n_rejected; r++)
+				if (sel->rejected[r].backend == b)
+					printf("      %-22s rejected: %s\n", "",
+					       sel->rejected[r].reason);
 		}
 	}
+	if (ctx->portable_enabled) {
+		printf("\n# system.portable.* candidates (chain order):\n");
+		for (size_t i = 0; i < intp_portable_count(); i++) {
+			const char *active = intp_portable_backend(i);
+			const char *id, *desc;
+			unsigned int lin;
+
+			printf("%s:\n", intp_portable_name(i) + 16);
+			for (size_t j = 0;
+			     intp_portable_candidate(i, j, &id, &desc, &lin) ==
+			     0;
+			     j++)
+				printf("  %s %-22s %-6s %s\n",
+				       (active && strcmp(active, id) == 0)
+					       ? "*"
+					       : " ",
+				       id, lineage_tag(lin), desc ? desc : "");
+		}
+	}
+	printf("\n# engine: %s  (lineage: stable = across-intp v2.1, ebpf = "
+	       "v3.3, both = shared)\n",
+	       intp_core_engine_name(intp_core_engine_get()));
 	return 0;
 }
 
@@ -600,6 +667,16 @@ int main(int argc, char *argv[])
 		case OPT_PORTABLE:
 			want_portable = true;
 			break;
+		case OPT_ENGINE:
+			if (parse_engine(optarg, &extras.engine) != 0) {
+				fprintf(stderr,
+					"intp: bad --engine: %s (expected "
+					"auto, "
+					"stable or ebpf)\n",
+					optarg);
+				return 2;
+			}
+			break;
 		case 'i': {
 			long ms = parse_duration_ms(optarg);
 
@@ -721,6 +798,18 @@ int main(int argc, char *argv[])
 	}
 	if (want_portable)
 		extras.portable_metrics = 1;
+
+	/* --engine=ebpf reproduces across-intp v3.3: refuse to sample when
+	 * eBPF cannot load, instead of producing a run of unavailable
+	 * readings. Introspection (--list-backends, --print-schema) still
+	 * runs and shows why. */
+	if (extras.engine == INTP_ENGINE_EBPF && !do_list_backends &&
+	    !do_print_schema && intp_probe_ebpf() != INTP_PROBE_OK) {
+		fprintf(stderr,
+			"intp: --engine=ebpf needs working eBPF backends; run "
+			"'intp --probe' for the reason.\n");
+		return 2;
+	}
 
 	if (n_disabled > 0)
 		opts.disabled_backends = disabled_backends;

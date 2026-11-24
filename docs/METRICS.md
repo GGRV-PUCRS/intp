@@ -69,27 +69,108 @@ justification.
 
 ## Backend selection per metric
 
-`intp --print-schema` shows which backend was selected for each
-metric on the running host. The selection logic is described in
-[ARCHITECTURE.md](ARCHITECTURE.md#backend-registry--runtime-selection);
-the per-metric defaults below assume eBPF is available.
+Every metric has an ordered chain of backends. Each backend belongs to
+one of the two across-intp variants intp is built from: the
+**stable-ABI** lineage (pure C over `/proc`, `/sys`, cgroup files and
+`perf_event_open`; across-intp **v2.1**) or the **eBPF** lineage
+(in-kernel aggregation with CO-RE; across-intp **v3.3**). The resctrl
+backends belong to both, because v2.1 and v3.3 read RDT the same way.
+`--list-backends` prints each candidate's lineage, the one selected,
+and why every other candidate was rejected; `--print-schema` carries
+the same information as JSON (`backend`, `rejected`, `engine`).
 
-The shipped chains (backend ids as reported by `--list-backends`):
+### How a backend is chosen
 
-| Metric | Backend candidates (in priority order)                                  |
-| ------ | ----------------------------------------------------------------------- |
-| netp   | `ebpf_bytes` → `tap` (VM) → `cgroup` (netns) → `sysfs` → `procfs`       |
-| nets   | `ebpf_softirq` → `procfs_softirq` → `procfs_throughput`                 |
-| blk    | `ebpf_svctm` → `cgroup` (io.stat) → `diskstats` (io_ticks) → `sysfs`    |
-| mbw    | `perf_uncore_imc` → `perf_amd_df` → `perf_arm_cmn` → `resctrl_mbm`      |
-| llcmr  | `ebpf_perf` → `cgroup` (perf cgroup mode) → `perf_hwcache` → `perf_raw` |
-| llcocc | `resctrl` → `proxy_from_miss_ratio`                                     |
-| cpu    | `ebpf_sched` → `cgroup` (cpu.stat) → `procfs_pid` → `procfs_system`     |
+For each metric, in chain order, the first candidate that passes all of
+these is bound:
 
-When an eBPF backend wins, fidelity matches the measured v3.3 endpoint
-in `across-intp`. When it loses (eBPF disabled at build time, BTF
-absent, kernel < 5.8, missing capability), the stable-ABI chain takes
-over and matches v2.1.
+1. **Built in.** `-Dwith_ebpf=disabled` compiles the eBPF lineage out.
+2. **Not disabled** by `--disable-backend`.
+3. **Allowed by the engine** (`--engine`, below).
+4. **Not deferring** (`auto` engine only). An eBPF backend steps aside,
+   with the reason recorded, when it would change what is measured:
+   - for a PID target (`-p`, `--pids`, `--comm`), `cpu`, `llcmr` and
+     `netp`: the BPF programs attribute per cgroup or system-wide only,
+     so the per-PID stable backend keeps the target's scope. `nets` and
+     `blk` have no per-PID backend in either lineage and stay eBPF;
+   - inside a KVM guest, `cpu`: the in-guest eBPF reading depends on
+     the sampling interval (JSA §6.1.2), so `procfs` is used.
+5. **Probe passes** on this host (capabilities, kernel, PMU, files).
+6. **Init succeeds**; otherwise selection falls through to the next
+   candidate that passes 2–5.
+
+A metric with no candidate left reads unavailable, never zero.
+`--force-backend metric:id` binds a named backend directly, skipping
+steps 3 and 4 (the probe still has to pass).
+
+### Chains
+
+Core metrics (`--list-backends` order; lineage in brackets):
+
+| Metric | Candidates                                                                                     |
+| ------ | ---------------------------------------------------------------------------------------------- |
+| netp   | `ebpf_bytes` [ebpf] → `tap` (VM) → `cgroup` (netns) → `sysfs` → `procfs`                       |
+| nets   | `ebpf_softirq` [ebpf] → `procfs_softirq` → `procfs_throughput`                                 |
+| blk    | `ebpf_svctm` [ebpf] → `cgroup` (io.stat) → `diskstats` (io_ticks) → `sysfs`                    |
+| mbw    | `perf_uncore_imc` → `perf_amd_df` → `perf_arm_cmn` → `resctrl_mbm` [both]                      |
+| llcmr  | `ebpf_perf` [ebpf] → `cgroup` (perf cgroup mode) → `perf_hwcache` → `perf_raw`                 |
+| llcocc | `resctrl` [both] → `proxy_from_miss_ratio`                                                     |
+| cpu    | `ebpf_sched` [ebpf] → `cgroup` (cpu.stat) → `procfs_pid` → `procfs_system`                     |
+
+Portable metrics (`--experimental --portable-metrics`, ADR-0009/0013):
+
+| Metric         | Candidates                                                                     |
+| -------------- | ------------------------------------------------------------------------------ |
+| schedlat       | `ebpf_schedlat` [ebpf] → `schedstat_pid` (per thread) → `psi_cpu_cgroup` → `psi_cpu_system` |
+| psi_mem        | `psi_mem_cgroup` [both] → `psi_mem_system` [both]                              |
+| membw_est      | `membw_cgroup` → `perf_hwcache` → `ebpf_llc_misses` [ebpf]                     |
+| psi_io         | `psi_io_cgroup` [both] → `psi_io_system` [both]                                |
+| schedthr       | `cpu.stat` [both] (cgroup targets only)                                        |
+| steal          | `proc_stat` [both]                                                             |
+| psp            | `ebpf_psp` [ebpf] → `nonvol_ctxt_pid` (per thread)                             |
+| idle_preempt   | `ebpf_idle_preempt` [ebpf] → `unavailable` (no stable-ABI source exists)       |
+
+Unmarked candidates are stable-ABI. `membw_est` is the one chain that
+prefers the stable lineage: on network-heavy targets the per-packet
+eBPF hooks charge their own cache misses to the target cgroup, and the
+eBPF estimate reads several times the C one (across-intp C31; JSA
+§6.2.3).
+
+### Engines
+
+`--engine` restricts every chain to one lineage, so a single intp
+binary can stand in for either research variant:
+
+| Engine            | Runs                                           | Reproduces        |
+| ----------------- | ---------------------------------------------- | ----------------- |
+| `auto` (default)  | eBPF where it probes and keeps scope, else C   | the hybrid        |
+| `stable` (`c`)    | stable-ABI backends and the shared resctrl ones | across-intp v2.1  |
+| `ebpf` (`v3.3`)   | eBPF backends and the shared ones              | across-intp v3.3  |
+
+Under `stable` or `ebpf` a metric the lineage cannot serve reads
+unavailable instead of borrowing from the other: `--engine=ebpf` gives
+`mbw` and `llcocc` only through resctrl (no uncore counters, no
+miss-ratio proxy), `schedlat` only from BPF, and `idle_preempt` has a
+value; `--engine=stable` leaves `idle_preempt` unavailable, as v2.1
+does. `--engine=ebpf` exits with status 2 when eBPF cannot load, so a
+campaign never records a run of unavailable readings by accident. The
+deferral rules apply to `auto` only: `--engine=ebpf` with a PID target
+measures system-wide. v3.3 is the per-cgroup variant: without a cgroup
+target it reads 0 for every cgroup-scoped column, while
+`--engine=ebpf` reads the host-wide counters there (as v3.2, its
+system-wide counterpart, does). Compare `--engine=ebpf` with v3.3 on a
+cgroup target.
+
+For finer control, `--force-backend` picks a backend per metric from
+either lineage, core or portable, and overrides the engine for that
+metric. This is meant for benchmarking and cross-variant comparisons;
+the default `auto` is the right choice for monitoring:
+
+```bash
+sudo intp --engine=stable --force-backend blk:diskstats \
+     --experimental --portable-metrics --force-backend schedlat:ebpf_schedlat \
+     -c /sys/fs/cgroup/system.slice/docker-ID.scope
+```
 
 ## Semantic models (ADR-0010)
 
@@ -152,7 +233,7 @@ measure instead of emitting zeros:
 
 | Metric | In a KVM guest |
 | --- | --- |
-| `cpu` | available; prefer the procfs backends (`--disable-backend cpu:ebpf_sched`): the eBPF `cpu` backend's in-guest reading depends on the sampling interval |
+| `cpu` | available; under `--engine=auto` the procfs backends are chosen automatically, because the eBPF `cpu` backend's in-guest reading depends on the sampling interval (`--force-backend cpu:ebpf_sched` keeps it) |
 | `llcmr` | degraded: `arch_cache_refs` family, directional only |
 | `llcocc` | proxy from the miss ratio, directional only |
 | `mbw` | unavailable (no resctrl MBM) |
@@ -190,24 +271,33 @@ The full hardware compatibility matrix is in
 - **System-wide** mode: `intp` (no target). Aggregates across all
   PIDs; uses `/proc/stat`, system-wide `perf_event_open`, root
   resctrl monitor.
-- **Per-PID** mode: `intp -p <pid>` or `intp -p $(pgrep -f my-app)`.
+- **Per-PID** mode: `intp -p <pid>`, `--pids a,b,c` or `--comm name`.
   Uses `/proc/<pid>/stat`, PID-attached `perf_event_open`, and a
-  per-PID resctrl `mon_group`.
+  per-PID resctrl `mon_group`. `cpu`, `llcmr`, `mbw`/`llcocc` (resctrl)
+  and `netp` (when the process has its own network namespace) are
+  per-PID; `nets` and `blk` have no per-PID source and are host-wide.
+  The BPF programs attribute per cgroup or host-wide only, so under
+  `--engine=auto` the eBPF `cpu`, `llcmr` and `netp` backends step
+  aside for the per-PID ones. The portable `schedlat` and `psp` read
+  every thread of the target (`/proc/<pid>/task`), not only the
+  process leader.
 - **Per-cgroup** mode: `intp -c /sys/fs/cgroup/<path>` (alias
   `--target-container`). Uses cgroup-aware `perf_event_open` and a
   shared resctrl group for the target. The PID set is read over the
   whole cgroup subtree, so container layouts whose top cgroup holds no
   processes (Incus `.lxc`, systemd `init.scope`) are attributed to the
-  container rather than falling back to system-wide counting.
+  container rather than falling back to system-wide counting. The
+  portable `schedlat` and `psp` re-read `cgroup.threads` over the
+  subtree every interval, so threads created after start are counted.
 - **Cadence:** low-rate event counts and miss-derived signals under CPU
   oversubscription lose fidelity at multi-second intervals; keep the
   interval at or below 1 s when those metrics matter.
 
 The per-PID resctrl plumbing is the trickiest part because resctrl
 groups are mutually exclusive — a PID can be in exactly one
-`mon_group` at a time. `intp` either creates and tears down its own
-`mon_group` for the target (default) or attaches to an existing one
-(`--resctrl-group=<name>`).
+`mon_group` at a time. `intp` creates its own `mon_group` for the
+target, re-enrolls the target's live tasks on a cadence, tears the
+group down on exit, and reaps groups left behind by a crashed run.
 
 ---
 

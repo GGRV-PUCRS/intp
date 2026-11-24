@@ -11,7 +11,48 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [Unreleased]
 
+### Added
+
+- **`--engine auto|stable|ebpf`.** Restricts every backend chain to one
+  lineage, so one intp build reproduces across-intp v2.1
+  (`stable`, alias `c`) or v3.3 (`ebpf`, alias `v3.3`) end to end;
+  `auto` keeps the hybrid default. `--engine=ebpf` refuses to sample
+  when eBPF cannot load (ADR-0013).
+- **eBPF backends for the portable metrics.** `schedlat`, `psp` and
+  `idle_preempt` read the v3.3 counters the eBPF loader already
+  collected, and `membw_est` gains an eBPF fallback after the perf
+  backends. `idle_preempt` now has a value on eBPF hosts instead of
+  always reading unavailable.
+- `--force-backend` accepts portable metrics (`schedlat:schedstat_pid`)
+  and overrides `--engine` for that metric.
+- `--list-backends` shows each candidate's lineage and rejection
+  reason, and the portable chains; `--print-schema` reports the engine
+  and each portable metric's backend.
+
+### Changed
+
+- Synced with across-intp `v0.2.1` (`a214643cb1be`, ADR-0013).
+- Under the default engine, the eBPF `cpu`, `llcmr` and `netp` backends
+  step aside for per-PID targets, and the eBPF `cpu` backend inside a
+  KVM guest, with the reason shown in `--print-schema`.
+
 ### Fixed
+
+- **Per-PID targets on eBPF hosts.** `-p`, `--pids` and `--comm` runs
+  reported host-wide `cpu`, `llcmr` and `netp` under a `pid` target,
+  because the eBPF backends, which have no per-PID scope, won
+  selection. The per-PID backends are now used.
+- **Portable `schedlat` and `psp` on multi-threaded targets.** They read
+  only each process's leader thread, so a workload whose leader sleeps
+  read 0, and an exiting task zeroed the whole interval. They now keep
+  a baseline per thread, as across-intp v0.2.1 (C38) does, and report
+  `degraded` with note `tid_cap` past 16384 threads.
+- **Tests.** `cli/degradation-no-resctrl` failed as root, where the
+  uncore memory-controller counters serve `mbw`; it now pins `mbw` to
+  its RDT backend. `xval.sh` no longer compares against v3.3 without a
+  cgroup target (v3.3 reads 0 system-wide), pins the disk ceiling for
+  v2.1 as for intp, and adds the `--engine` arms and the
+  lineage-matched pairs.
 
 - **Release workflow.** Tag builds failed before producing anything:
   the binary jobs asked apt for the virtual `bpftool` package

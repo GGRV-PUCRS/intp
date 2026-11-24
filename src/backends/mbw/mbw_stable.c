@@ -319,6 +319,7 @@ static const struct intp_core_backend b_resctrl = {
 	.requires = "requires mounted resctrl with MBM (Intel RDT, AMD QoS, or "
 		    "ARM MPAM)",
 	.priority = INTP_PRIORITY_LOWEST,
+	.lineage = INTP_LINEAGE_STABLE | INTP_LINEAGE_EBPF,
 	.probe = resctrl_probe,
 	.init = resctrl_init_,
 	.read = resctrl_read_,

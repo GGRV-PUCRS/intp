@@ -133,6 +133,21 @@ test('plugins/portable-provider',
      suite: 'unit',
 )
 
+# AUTO-engine defer rules of the real eBPF backends (ADR-0013); SKIPs
+# (77) in a -Dwith_ebpf=disabled build.
+test_unit_defer = executable(
+        'test-unit-defer',
+        'test_defer.c',
+        include_directories: [test_common_inc],
+        dependencies: intp_internal_dep,
+        install: false,
+)
+
+test('core/ebpf-defer-rules',
+     test_unit_defer,
+     suite: 'unit',
+)
+
 # Compiles the CLI's serve-URI parser directly (it is pure / standalone).
 test_unit_serve_uri = executable(
         'test-unit-serve-uri',

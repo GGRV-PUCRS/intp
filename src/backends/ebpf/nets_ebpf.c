@@ -128,6 +128,7 @@ static struct intp_core_backend nets_ebpf_backend = {
 	.scope = "system",
 	.requires = "requires eBPF (kernel 5.8+, BTF, CAP_BPF or root)",
 	.priority = INTP_PRIORITY_HIGH,
+	.lineage = INTP_LINEAGE_EBPF,
 	.probe = nets_ebpf_probe,
 	.init = nets_ebpf_init,
 	.read = nets_ebpf_read,
