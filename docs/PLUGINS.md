@@ -277,8 +277,13 @@ tree (ADR-0009). It publishes `system.portable.*` behind
 `--experimental --portable-metrics` (ADR-0008): six signals that stay
 observable inside a KVM guest (`schedlat`, `psi_mem`, `membw_est`,
 `psi_io`, `schedthr`, `steal`) and two scheduling-regime rates (`psp`,
-`idle_preempt`; the latter needs eBPF and reads unavailable on the
-pure-C provider). The fence stays in 0.10.0 and lifts per metric once
+`idle_preempt`; the latter needs eBPF and reads unavailable without
+it). Each metric has its own fallback chain mixing the two across-intp
+lineages: eBPF backends that read the v3.3 counters the shared loader
+collects, and the v2.1 stable-ABI readers, with `schedlat` and `psp`
+read per thread (ADR-0013). `--engine` and `--force-backend` apply to
+these chains as to the core ones; see
+[METRICS.md](METRICS.md#backend-selection-per-metric). The fence stays in 0.10.0 and lifts per metric once
 the validation verdicts are final (ADR-0012). Two findings from the
 across-intp campaigns bound how to read them:
 

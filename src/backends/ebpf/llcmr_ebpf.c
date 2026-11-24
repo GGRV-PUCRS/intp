@@ -28,6 +28,16 @@ static struct {
 
 static struct intp_core_backend llcmr_ebpf_backend;
 
+/* AUTO engine: keep a per-PID target's scope (the BPF programs attribute
+ * per cgroup or system-wide only). */
+static const char *llcmr_ebpf_defer(void)
+{
+	if (intp_ebpf_pid_target())
+		return "per-PID target: eBPF attributes per cgroup or "
+		       "system-wide only, so the per-PID backend is kept";
+	return NULL;
+}
+
 static int llcmr_ebpf_probe(void)
 {
 	if (intp_probe_ebpf() != INTP_PROBE_OK)
@@ -94,6 +104,8 @@ static struct intp_core_backend llcmr_ebpf_backend = {
 	.requires = "requires eBPF and PMU-backed perf "
 		    "(kernel 5.8+, BTF, CAP_BPF+CAP_PERFMON or root)",
 	.priority = INTP_PRIORITY_HIGH,
+	.lineage = INTP_LINEAGE_EBPF,
+	.defer = llcmr_ebpf_defer,
 	.probe = llcmr_ebpf_probe,
 	.init = llcmr_ebpf_init,
 	.read = llcmr_ebpf_read,

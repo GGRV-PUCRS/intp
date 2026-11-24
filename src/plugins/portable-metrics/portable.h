@@ -6,6 +6,8 @@
  * The provider wraps the eight VM-portable metrics ported from
  * across-intp:
  *   variants/v2.1-c-abi-cgroup/src/portable.c @ 2e87b30fc762
+ * plus eBPF backends that read the v3.3 counters the shared loader
+ * already collects (ADR-0013).
  * It deliberately does NOT register into the core "intp_backends"
  * linker section: the canonical seven-metric fingerprint stays
  * byte-identical whether or not the provider is enabled, and the
@@ -53,6 +55,26 @@ int intp_portable_select_and_init(void);
  * Safe to call without a prior intp_portable_select_and_init(). */
 void intp_portable_read(size_t i, struct intp_core_sample *out,
 			double interval_sec);
+
+/* Operator override (--force-backend metric:backend_id), recorded before
+ * intp_portable_select_and_init(): the named backend is bound if its
+ * probe and init pass, regardless of --engine; otherwise normal selection
+ * runs and a warning is printed. `metric` is the short name ("schedlat").
+ * Returns 0 when the pair exists, -ENOENT otherwise. */
+int intp_portable_force(const char *metric, const char *backend_id);
+
+/* Drop every recorded override (also done by intp_portable_cleanup). */
+void intp_portable_force_clear(void);
+
+/* Backend id bound for metric i after intp_portable_select_and_init(),
+ * or NULL when the metric is unavailable. */
+const char *intp_portable_backend(size_t i);
+
+/* Candidate j of metric i in chain order: fills *id, *desc and *lineage
+ * (enum intp_core_lineage bits, 0 = stable) and returns 0, or -1 past the
+ * end. For --list-backends. */
+int intp_portable_candidate(size_t i, size_t j, const char **id,
+			    const char **desc, unsigned int *lineage);
 
 /* Release every backend resource. Idempotent. */
 void intp_portable_cleanup(void);

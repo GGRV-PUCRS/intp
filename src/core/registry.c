@@ -140,6 +140,46 @@ static bool backend_disabled(const struct intp_ctx *ctx,
 	return false;
 }
 
+static enum intp_core_engine g_engine = INTP_ENGINE_AUTO;
+
+void intp_core_engine_set(enum intp_core_engine e)
+{
+	g_engine = e;
+}
+
+enum intp_core_engine intp_core_engine_get(void)
+{
+	return g_engine;
+}
+
+const char *intp_core_engine_name(enum intp_core_engine e)
+{
+	switch (e) {
+	case INTP_ENGINE_STABLE:
+		return "stable";
+	case INTP_ENGINE_EBPF:
+		return "ebpf";
+	case INTP_ENGINE_AUTO:
+	default:
+		return "auto";
+	}
+}
+
+int intp_core_lineage_allowed(unsigned int lineage)
+{
+	if (lineage == 0)
+		lineage = INTP_LINEAGE_STABLE;
+	switch (g_engine) {
+	case INTP_ENGINE_STABLE:
+		return (lineage & INTP_LINEAGE_STABLE) != 0;
+	case INTP_ENGINE_EBPF:
+		return (lineage & INTP_LINEAGE_EBPF) != 0;
+	case INTP_ENGINE_AUTO:
+	default:
+		return 1;
+	}
+}
+
 static void record_rejection(struct intp_core_selection *sel,
 			     const struct intp_core_backend *b,
 			     const char *reason)
@@ -149,6 +189,27 @@ static void record_rejection(struct intp_core_selection *sel,
 	sel->rejected[sel->n_rejected].backend = b;
 	sel->rejected[sel->n_rejected].reason = reason;
 	sel->n_rejected++;
+}
+
+/* Reason a candidate may not be chosen automatically, or NULL. Order:
+ * operator disable, engine lineage, then the backend's own defer hook
+ * (AUTO only). The probe is checked separately by the callers. */
+static const char *selection_gate(const struct intp_ctx *ctx,
+				  const struct intp_core_backend *b)
+{
+	if (backend_disabled(ctx, b))
+		return "disabled by operator";
+	if (!intp_core_lineage_allowed(b->lineage))
+		return g_engine == INTP_ENGINE_STABLE
+			       ? "excluded by --engine=stable"
+			       : "excluded by --engine=ebpf";
+	if (g_engine == INTP_ENGINE_AUTO && b->defer) {
+		const char *why = b->defer();
+
+		if (why)
+			return why;
+	}
+	return NULL;
 }
 
 /* Order: priority descending, then chain_order ascending, then id
@@ -229,9 +290,10 @@ int intp_core_select(struct intp_ctx *ctx)
 		for (int i = 0; i < sel->n_candidates; i++) {
 			const struct intp_core_backend *b = sel->candidates[i];
 
-			if (backend_disabled(ctx, b)) {
-				record_rejection(sel, b,
-						 "disabled by operator");
+			const char *gate = selection_gate(ctx, b);
+
+			if (gate) {
+				record_rejection(sel, b, gate);
 				continue;
 			}
 			if (sel->active) {
@@ -284,7 +346,11 @@ int intp_core_init_backends(struct intp_ctx *ctx)
 		for (int i = start; i < sel->n_candidates; i++) {
 			const struct intp_core_backend *b = sel->candidates[i];
 
-			if (backend_disabled(ctx, b))
+			/* A fall-through candidate passes the same gates as
+			 * automatic selection (its reason was recorded there);
+			 * the bound start, possibly operator-forced, does not. */
+			if (backend_disabled(ctx, b) ||
+			    (i > start && selection_gate(ctx, b)))
 				continue;
 			/* Re-check probe when falling through. */
 			if (i > start && b->probe && b->probe() != 0) {

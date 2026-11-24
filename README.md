@@ -5,7 +5,7 @@
 **Interference profiling. Precise observability. For Linux.**
 
 <p align="center">
-  <img alt="status" src="https://img.shields.io/badge/release-0.10.0--beta1-orange?style=flat-square">
+  <img alt="status" src="https://img.shields.io/badge/release-0.10.0--beta2-orange?style=flat-square">
   <a href="https://launchpad.net/~norohim/+archive/ubuntu/intp-staging"><img alt="PPA" src="https://img.shields.io/badge/PPA-norohim%2Fintp--staging-E95420?style=flat-square&logo=ubuntu&logoColor=white"></a>
   <img alt="destination" src="https://img.shields.io/badge/destination-PPA%20%E2%86%92%20official%20package-success?style=flat-square">
   <img alt="kernel" src="https://img.shields.io/badge/Linux-kernel%206.8%2B-informational?style=flat-square">
@@ -143,7 +143,7 @@ has well-defined stops. The full breakdown lives in
 4. **Personal PPA on Launchpad** — *you are here*: `ppa:norohim/intp`
    carried a placeholder (0.2.0~placeholder, no metrics); 0.10.0 is
    the first release with the profiler, for 22.04, 24.04 and 26.04.
-   0.10.0-beta1 is in `ppa:norohim/intp-staging` ahead of the RDT gate.
+   0.10.0-beta2 is in `ppa:norohim/intp-staging` ahead of the RDT gate.
 5. **Debian sponsorship** — *Intent To Package* (ITP),
    `mentors.debian.net` review, sponsored upload by a Debian Developer.
 6. **Ubuntu universe** — automatic sync from Debian.
@@ -167,7 +167,7 @@ sudo apt install intp
   lands there it holds only the old placeholder.
   [`ppa:norohim/intp-staging`](https://launchpad.net/~norohim/+archive/ubuntu/intp-staging)
   holds betas, release candidates and untested builds.
-- **0.10.0-beta1** is published to `ppa:norohim/intp-staging` only. It
+- **0.10.0-beta2** is published to `ppa:norohim/intp-staging` only. It
   has not passed the RDT-testbed release gate; try it with
   `sudo add-apt-repository ppa:norohim/intp-staging`, and expect 0.10.0
   to replace it through a normal upgrade.

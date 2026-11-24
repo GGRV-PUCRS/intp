@@ -94,6 +94,7 @@ static struct intp_core_backend blk_ebpf_backend = {
 	.scope = "system",
 	.requires = "requires eBPF (kernel 5.8+, BTF, CAP_BPF or root)",
 	.priority = INTP_PRIORITY_HIGH,
+	.lineage = INTP_LINEAGE_EBPF,
 	.probe = blk_ebpf_probe,
 	.init = blk_ebpf_init,
 	.read = blk_ebpf_read,
