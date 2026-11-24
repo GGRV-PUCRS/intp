@@ -82,7 +82,7 @@ testbed**: like 0.10.0-beta1 it skips the release gate
 
 ### Changed
 
-- Synced with across-intp `v0.2.2` (ADR-0014), after `v0.2.1`
+- Synced with across-intp `v0.2.2` (`a1aad1a7277e`, ADR-0014), after `v0.2.1`
   (`a214643cb1be`, ADR-0013).
 - Under the default engine, the eBPF `cpu`, `llcmr` and `netp` backends
   step aside for per-PID targets, and the eBPF `cpu` backend inside a

@@ -20,10 +20,9 @@ ceiling (C39) and relabels the JSA figures (D22).
 
 ## Decision
 
-**1. Pin.** intp is synced with across-intp tag **`v0.2.2`**. This ADR
-audited the tree of across-intp `release/v0.2.2` at `5d90acc`, whose
-variant trees are what the tag carries; SYNC.md records the tag's commit
-once it is cut.
+**1. Pin.** intp is synced with across-intp **`a1aad1a7277e`** (tag
+`v0.2.2`, the merge of `release/v0.2.2` into `main`). This ADR audited
+`release/v0.2.2` at `5d90acc`; the merge commit carries the same tree.
 
 **2. Audit** (`git diff a214643cb1be 5d90acc` over every SYNC.md origin):
 

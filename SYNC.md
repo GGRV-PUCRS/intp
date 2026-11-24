@@ -11,9 +11,11 @@ entries to `docs/DECISIONS-container.md`, `S` entries to
 
 ## The contract: pinned re-sync
 
-- **Current pin:** across-intp tag **`v0.2.2`**, recorded in
+- **Current pin:** across-intp **`a1aad1a7277e`**, tag `v0.2.2`
+  (2026-11-24), recorded in
   [ADR-0014](docs/design/0014-resync-v0.2.2-cpu-norm.md). The audit read
-  `release/v0.2.2` at `5d90acc`; the tag's commit goes here once it is cut.
+  `release/v0.2.2` at `5d90acc`, whose tree the tag's merge commit carries
+  unchanged.
   Earlier pins: `a214643cb1be` (tag `v0.2.1`,
   [ADR-0013](docs/design/0013-engines-and-resync-v0.2.1.md)) and
   `24f26e5a5df1` (tag `v0.2.0`,
