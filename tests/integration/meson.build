@@ -61,15 +61,19 @@ endif
 # metrics must be (a) absent from the JSONL stream — never zero — and
 # (b) explained in --print-schema. On resctrl-capable hosts the test
 # SKIPs (exit 77): the positive RDT path belongs to the remote gate.
+# mbw is pinned to its RDT backend: as root the uncore memory-controller
+# counters (perf_uncore_imc and its AMD/ARM peers) would otherwise serve
+# it, and the test is about the RDT path, not about mbw as a whole.
 test('cli/degradation-no-resctrl',
      find_program('sh'),
      args: ['-c', '''
         BIN=@0@
         [ -d /sys/fs/resctrl/mon_groups ] && exit 77
-        OUT=$($BIN -i 200ms -d 1 2>/dev/null)
+        RDT_ONLY="--disable-backend perf_uncore_imc --disable-backend perf_amd_df --disable-backend perf_arm_cmn"
+        OUT=$($BIN $RDT_ONLY -i 200ms -d 1 2>/dev/null)
         echo "$OUT" | grep -q "system.interference.cpu" || exit 1
         echo "$OUT" | grep -q "system.interference.mbw" && exit 1
-        SCHEMA=$($BIN --print-schema)
+        SCHEMA=$($BIN $RDT_ONLY --print-schema)
         echo "$SCHEMA" | grep -A4 "system.interference.mbw" | grep -q "available.: false" || exit 1
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
@@ -120,6 +124,44 @@ test('cli/portable-metrics-keep-tsv-legacy-7-columns',
         [ $RC -eq 0 ] || exit 1
         [ -n "$OUT" ] || exit 1
         echo "$OUT" | awk -F"	" "NF != 7 { bad = 1 } END { exit bad }" || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+     depends: intp_exe,
+)
+
+# --cpu-norm (opt-in cgroup-capacity divisor for cpu): a bad mode is a
+# usage error (exit 2); --print-schema declares the basis in use, online
+# by default and the cgroup capacity (cpuset capped by cpu.max) when
+# asked for. Uses a fake cgroup directory, so it runs unprivileged.
+test('cli/cpu-norm-rejects-bad-mode',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        ERR=$($BIN --cpu-norm bogus 2>&1 >/dev/null)
+        RC=$?
+        [ $RC -eq 2 ] || exit 1
+        echo "$ERR" | grep -q cpu-norm || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+     depends: intp_exe,
+)
+
+test('cli/cpu-norm-schema-declares-basis',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        T=$(mktemp -d) || exit 1
+        trap 'rm -rf "$T"' EXIT
+        printf 'usage_usec 1000\n' > "$T/cpu.stat"
+        printf '0-3\n' > "$T/cpuset.cpus.effective"
+        printf '150000 100000\n' > "$T/cpu.max"
+        $BIN --print-schema | grep -q '"normalization": "online"' || exit 1
+        $BIN -c "$T" --print-schema | grep -q '"normalization": "online"' || exit 1
+        S=$($BIN -c "$T" --cpu-norm cgroup --print-schema) || exit 1
+        echo "$S" | grep -q '"normalization": "cgroup"' || exit 1
+        echo "$S" | grep -q '"normalization_cpus": 1.50' || exit 1
         exit 0
      '''.format(meson.project_build_root() / 'src/cli/intp')],
      suite: 'integration',

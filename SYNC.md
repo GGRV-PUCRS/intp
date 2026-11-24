@@ -3,17 +3,23 @@
 `intp` is the production line. [**across-intp**](https://github.com/GGRV-PUCRS/across-intp)
 (formerly intp-comparison) is the public research repository where the
 measured variants, the benchmark campaigns and the papers live: its
-`v0.1.0` release is the SBAC-PAD 2026 artifact and its `v0.2.0` release
-the JSA artifact. Decision codes in comments here refer to across-intp's
+`v0.1.0` release is the SBAC-PAD 2026 artifact, and the JSA article cites
+its `v0.2.2` release for the code and the `v0.2.1` record for the data. Decision codes in comments here refer to across-intp's
 logs unless another log is named: `D` entries to `DECISIONS.md`, `C`
 entries to `docs/DECISIONS-container.md`, `S` entries to
 `bench/iada/DECISIONS-sim-experiments.md`.
 
 ## The contract: pinned re-sync
 
-- **Current pin:** across-intp **`24f26e5a5df1`**, tag `v0.2.0`
-  (2026-09-22), recorded in [ADR-0012](docs/design/0012-resync-across-intp.md)
-  and across-intp D15.
+- **Current pin:** across-intp **`a1aad1a7277e`**, tag `v0.2.2`
+  (2026-11-24), recorded in
+  [ADR-0014](docs/design/0014-resync-v0.2.2-cpu-norm.md). The audit read
+  `release/v0.2.2` at `5d90acc`, whose tree the tag's merge commit carries
+  unchanged.
+  Earlier pins: `a214643cb1be` (tag `v0.2.1`,
+  [ADR-0013](docs/design/0013-engines-and-resync-v0.2.1.md)) and
+  `24f26e5a5df1` (tag `v0.2.0`,
+  [ADR-0012](docs/design/0012-resync-across-intp.md), across-intp D15).
 - **History:** the first port was a one-way freeze at **`2e87b30fc762`**
   (branch `feat/container-based-interference`, 2026-06-10, across-intp
   D10). Every ported file carries a provenance header naming its origin
@@ -37,11 +43,22 @@ subtree (v2.1 reads the top cgroup only), marks the guest
 architectural-cache `llcmr` fallback as degraded, and reports where the
 `mbw` ceiling came from.
 
+Recorded in ADR-0013: intp runs both lineages in one binary
+(`--engine auto|stable|ebpf`); under `auto` the eBPF `cpu`, `llcmr` and
+`netp` backends step aside for per-PID targets, and the eBPF `cpu`
+backend inside a KVM guest. `--engine=stable` and `--engine=ebpf`
+reproduce v2.1 and v3.3 without those rules.
+
+Recorded in ADR-0014: the `--cpu-norm` basis is reported by
+`--print-schema` instead of a `# cpu normalization:` line in the TSV,
+which keeps its legacy header.
+
 ## Provenance map
 
 Origins are paths in across-intp. Each was first ported at
-`2e87b30fc762` and audited unchanged-or-back-ported at the pin
-`24f26e5a5df1` (ADR-0012).
+`2e87b30fc762`, audited at `24f26e5a5df1` (ADR-0012), at `a214643cb1be`
+(ADR-0013), where the v0.2.1 changes were ported, and at v0.2.2
+(ADR-0014), where the cgroup cpu normalization was ported.
 
 | intp | across-intp origin |
 |---|---|
@@ -58,10 +75,12 @@ Origins are paths in across-intp. Each was first ported at
 | `src/backends/llcmr/llcmr_perf.c` | `variants/v2.1-c-abi-cgroup/src/llcmr.c` |
 | `src/backends/llcocc/llcocc_stable.c` | `variants/v2.1-c-abi-cgroup/src/llcocc.c` (+ hygiene in init) |
 | `src/backends/cpu/cpu_procfs.c` | `variants/v2.1-c-abi-cgroup/src/cpu.c` |
+| `src/backends/ebpf/cpu_ebpf.c` (cpu basis) | `variants/v3.3-ebpf-core-cgroup/src/{intp_agg.c,cgroup_cap.c}` (`compute_sample`, `--cpu-norm`) |
 | `src/backends/ebpf/intp_agg.bpf.{c,h}` (byte-frozen) | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.{c,h}` |
 | `src/backends/ebpf/ebpf_loader.c` + shims | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.c` (split: skeleton lifecycle / map polling / compute_sample slices) |
 | `src/output/tsv_legacy.c` (rendering) | `variants/v2.1-c-abi-cgroup/intp-hybrid.c` (`emit_tsv`/`format_value`) |
-| `src/plugins/portable-metrics/` | `variants/v2.1-c-abi-cgroup/src/portable.c` |
+| `src/plugins/portable-metrics/` (stable-ABI backends) | `variants/v2.1-c-abi-cgroup/src/portable.c` |
+| `src/plugins/portable-metrics/` (eBPF backends) | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.c` (`--portable-metrics` block of the main loop) |
 | `tests/unit/test_procutil.c`, `test_detect.c` | `variants/v2.1-c-abi-cgroup/tests/` |
 | `tests/regression/xval.sh` | `shared/validate-cross-variant.sh` |
 | `tests/regression/preflight.sh` | `shared/intp-preflight.sh` |

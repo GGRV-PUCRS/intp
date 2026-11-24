@@ -5,7 +5,9 @@
  * mapping, and honest unavailability when reading without init.
  */
 
+#include <errno.h>
 #include <math.h>
+#include <string.h>
 
 #include "../../src/plugins/portable-metrics/portable.h"
 #include "intp_test.h"
@@ -83,11 +85,45 @@ static void test_read_without_init_reports_unavailable(void)
 	intp_portable_cleanup();
 }
 
+/* --force-backend for system.portable.* (ADR-0013): known pairs are
+ * recorded, unknown ones are -ENOENT. */
+static void test_force_lookup(void)
+{
+	INTP_EXPECT_EQ(intp_portable_force("psp", "nonvol_ctxt_pid"), 0);
+	INTP_EXPECT_EQ(intp_portable_force("psp", "no_such"), -ENOENT);
+	INTP_EXPECT_EQ(intp_portable_force("no_such", "proc_stat"), -ENOENT);
+	INTP_EXPECT_EQ(intp_portable_force(NULL, "proc_stat"), -ENOENT);
+	intp_portable_force_clear();
+}
+
+/* Chain introspection: every metric lists at least one candidate, and
+ * the eBPF-only idle_preempt keeps its stable-ABI placeholder last. */
+static void test_candidates(void)
+{
+	const char *id, *desc;
+	unsigned int lin;
+
+	for (size_t i = 0; i < intp_portable_count(); i++)
+		INTP_EXPECT_EQ(intp_portable_candidate(i, 0, &id, &desc, &lin),
+			       0);
+
+	size_t last = 0;
+
+	while (intp_portable_candidate(7, last + 1, &id, &desc, &lin) == 0)
+		last++;
+	INTP_EXPECT_EQ(intp_portable_candidate(7, last, &id, &desc, &lin), 0);
+	INTP_EXPECT_STREQ(id, "unavailable");
+	INTP_EXPECT_EQ(intp_portable_candidate(8, 0, &id, &desc, &lin), -1);
+	INTP_EXPECT(intp_portable_backend(0) == NULL); /* nothing bound */
+}
+
 int main(void)
 {
 	INTP_TEST_BEGIN("portable-metrics-provider");
 	test_names_canonical_order();
 	test_units_mapping();
 	test_read_without_init_reports_unavailable();
+	test_force_lookup();
+	test_candidates();
 	return INTP_TEST_END();
 }

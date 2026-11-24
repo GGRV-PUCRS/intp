@@ -30,8 +30,8 @@ keywords:
   - performance monitoring
   - cloud computing
   - observability
-version: "0.10.0-beta1"
-date-released: "2026-11-18"
+version: "0.10.0-beta2"
+date-released: "2026-11-24"
 # The MSc dissertation (defense expected March 2027) becomes the
 # preferred citation once published:
 # preferred-citation:

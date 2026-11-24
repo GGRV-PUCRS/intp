@@ -64,9 +64,6 @@ asking up front.
   `feat(backend/ebpf): add CO-RE relocation for ring-buffer reader`,
   `fix(output/jsonl): emit schema_version on every line`,
   `docs(plugins): clarify ABI guarantees`.
-- **DCO sign-off** is required on every commit (`git commit -s`). We
-  do **not** use a CLA — sign-off matches kernel/Debian practice and
-  is what downstream packagers expect.
 - **One logical change per PR.** A PR that "fixes the build *and*
   refactors the registry *and* adds a metric" gets bounced. Split it.
 - **PR description must include:**
@@ -178,8 +175,9 @@ that the SPDX identifier in its descriptor matches the actual license.
 ## Licensing
 
 By contributing, you agree that your contribution is licensed under
-the [MIT license](LICENSE) (the project license). The DCO sign-off on
-each commit is your acknowledgement of this.
+the [MIT license](LICENSE) (the project license). Opening a pull
+request is your acknowledgement of this; there is no CLA and no
+per-commit sign-off.
 
 ---
 

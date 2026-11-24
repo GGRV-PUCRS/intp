@@ -517,11 +517,11 @@ int intp_ebpf_acquire(void)
 	 * cgroup_skb ingress/egress (attached manually to the cgroup fd
 	 * below) and the perf_event LLC programs (attached manually
 	 * per-CPU via perf_event_open below) are never auto-attached.
-	 * The schedlat/PSP programs (tp_sched_wakeup{,_new},
-	 * tp_schedlat) and the writeback byte-volume top-up
-	 * (tp_block_bio_complete) only feed counters no shim consumes
-	 * yet (portable metrics / diag columns, later phases), so their
-	 * attach is best-effort with no bit. */
+	 * The schedlat/psp/idle_preempt programs (tp_sched_wakeup{,_new},
+	 * tp_schedlat) feed the system.portable.* eBPF backends
+	 * (ADR-0013) and get their own bits. The writeback byte-volume
+	 * top-up (tp_block_bio_complete) only feeds a diagnostic column
+	 * no shim consumes, so its attach stays best-effort with no bit. */
 	if (attach_prog(st.skel->progs.tp_net_dev_xmit) == 0 &&
 	    attach_prog(st.skel->progs.tp_netif_receive_skb) == 0)
 		st.attached |= INTP_EBPF_NETP_DEV;
@@ -534,9 +534,18 @@ int intp_ebpf_acquire(void)
 	if (attach_prog(st.skel->progs.tp_sched_switch) == 0)
 		st.attached |= INTP_EBPF_CPU;
 	(void)attach_prog(st.skel->progs.tp_block_bio_complete);
-	(void)attach_prog(st.skel->progs.tp_sched_wakeup);
-	(void)attach_prog(st.skel->progs.tp_sched_wakeup_new);
-	(void)attach_prog(st.skel->progs.tp_schedlat);
+	{
+		/* tp_schedlat counts psp and idle_preempt on its own;
+		 * schedlat also needs the wakeup stamps. */
+		int wk = attach_prog(st.skel->progs.tp_sched_wakeup) == 0;
+		int wkn = attach_prog(st.skel->progs.tp_sched_wakeup_new) == 0;
+		int sl = attach_prog(st.skel->progs.tp_schedlat) == 0;
+
+		if (sl)
+			st.attached |= INTP_EBPF_REGIME;
+		if (sl && wk && wkn)
+			st.attached |= INTP_EBPF_SCHEDLAT;
+	}
 
 	/* ------- cgroup_skb ingress+egress on the target cgroup fd -------
 	 * Canonical per-cgroup netp (v3.3 C1). Only in container mode
@@ -619,6 +628,13 @@ int intp_ebpf_program_ok(int bit)
 int intp_ebpf_have_cgroup(void)
 {
 	return st.refcnt > 0 && st.have_cgroup;
+}
+
+int intp_ebpf_pid_target(void)
+{
+	const struct intp_core_target *t = intp_core_target_get();
+
+	return t && !t->cgroup_path && t->n_pids > 0;
 }
 
 /* Snapshot the maps and diff against the previous tick (the per-tick

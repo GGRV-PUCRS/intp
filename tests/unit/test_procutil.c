@@ -31,6 +31,68 @@ static void write_procs(const char *dir, const char *body)
 	}
 }
 
+static void write_cg_file(const char *dir, const char *name, const char *body)
+{
+	char p[512];
+
+	snprintf(p, sizeof(p), "%s/%s", dir, name);
+
+	FILE *f = fopen(p, "w");
+
+	if (f) {
+		fputs(body, f);
+		fclose(f);
+	}
+}
+
+static int near(double a, double b)
+{
+	double d = a - b;
+
+	return d < 1e-9 && d > -1e-9;
+}
+
+/* --cpu-norm=cgroup divisor: cpuset.cpus.effective count, capped by the
+ * tightest cpu.max quota on the path or an ancestor. */
+static void test_cpu_capacity(void)
+{
+	INTP_EXPECT_EQ(procutil_count_cpulist("0-15\n"), 16);
+	INTP_EXPECT_EQ(procutil_count_cpulist("0-3,8,10-11"), 7);
+	INTP_EXPECT_EQ(procutil_count_cpulist("5"), 1);
+	INTP_EXPECT_EQ(procutil_count_cpulist("3-1"), -1);
+	INTP_EXPECT_EQ(procutil_count_cpulist("a-b"), -1);
+
+	char top[] = "/tmp/intp-cputest-XXXXXX";
+
+	if (!mkdtemp(top)) {
+		INTP_EXPECT(0 && "mkdtemp failed");
+		return;
+	}
+
+	char child[96], leaf[128];
+
+	snprintf(child, sizeof(child), "%s/child", top);
+	snprintf(leaf, sizeof(leaf), "%s/leaf", child);
+	INTP_EXPECT(mkdir(child, 0755) == 0);
+	INTP_EXPECT(mkdir(leaf, 0755) == 0);
+
+	write_cg_file(top, "cpuset.cpus.effective", "0-15\n");
+	write_cg_file(top, "cpu.max", "max 100000\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(top), 16.0));
+
+	write_cg_file(child, "cpuset.cpus.effective", "0-3,8,10-11\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(child), 7.0));
+
+	write_cg_file(leaf, "cpuset.cpus.effective", "0-3,8,10-11\n");
+	write_cg_file(leaf, "cpu.max", "150000 100000\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(leaf), 1.5));
+
+	write_cg_file(child, "cpu.max", "100000 100000\n"); /* tighter */
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(leaf), 1.0));
+
+	INTP_EXPECT(procutil_cgroup_cpu_capacity(NULL) <= 0.0);
+}
+
 /* Build a fake nested cgroup tree (top has NO direct procs, the payload
  * lives in child + grandchild cgroups — the incus/lxc layout) and check
  * that the recursive reader captures the descendants the non-recursive
@@ -96,6 +158,70 @@ static void test_cgroup_procs_recursion(void)
 	rmdir(top);
 }
 
+/* cgroup.threads walks the same subtree as cgroup.procs (C38): a fake
+ * tree whose leaf lists three TIDs and whose .lxc child lists one. */
+static void test_cgroup_threads_recursion(void)
+{
+	char top[] = "/tmp/intp-cgthr-XXXXXX";
+
+	if (!mkdtemp(top)) {
+		INTP_EXPECT(0 && "mkdtemp failed");
+		return;
+	}
+
+	char leaf[64], dotlxc[64], p[128];
+
+	snprintf(leaf, sizeof(leaf), "%s/leaf", top);
+	snprintf(dotlxc, sizeof(dotlxc), "%s/.lxc", top);
+	INTP_EXPECT(mkdir(leaf, 0755) == 0);
+	INTP_EXPECT(mkdir(dotlxc, 0755) == 0);
+
+	const char *dirs[] = {top, leaf, dotlxc};
+	const char *bodies[] = {"", "2001\n2002\n2003\n", "2004\n"};
+
+	for (int i = 0; i < 3; i++) {
+		snprintf(p, sizeof(p), "%s/cgroup.threads", dirs[i]);
+
+		FILE *f = fopen(p, "w");
+
+		if (f) {
+			fputs(bodies[i], f);
+			fclose(f);
+		}
+	}
+
+	pid_t tids[16];
+
+	INTP_EXPECT_EQ(procutil_read_cgroup_threads_rec(top, tids, 16), 4);
+	/* The cap is honoured. */
+	INTP_EXPECT_EQ(procutil_read_cgroup_threads_rec(top, tids, 2), 2);
+
+	for (int i = 2; i >= 0; i--) {
+		snprintf(p, sizeof(p), "%s/cgroup.threads", dirs[i]);
+		unlink(p);
+	}
+	rmdir(dotlxc);
+	rmdir(leaf);
+	rmdir(top);
+}
+
+/* /proc/<pid>/task lists this process (its own TID == PID for the
+ * leader); a PID that does not exist yields 0. */
+static void test_proc_tasks(void)
+{
+	pid_t tids[64];
+	int n = procutil_read_proc_tasks(getpid(), tids, 64);
+	int self = 0;
+
+	INTP_EXPECT(n >= 1);
+	for (int i = 0; i < n; i++)
+		if (tids[i] == getpid())
+			self = 1;
+	INTP_EXPECT(self);
+	INTP_EXPECT_EQ(procutil_read_proc_tasks((pid_t)0x7ffffff0, tids, 64),
+		       0);
+}
+
 int main(void)
 {
 	INTP_TEST_BEGIN("backends/procutil");
@@ -134,6 +260,9 @@ int main(void)
 	/* utime+stime can legitimately be 0 for very fresh processes. */
 
 	test_cgroup_procs_recursion();
+	test_cgroup_threads_recursion();
+	test_proc_tasks();
+	test_cpu_capacity();
 
 	return INTP_TEST_END();
 }

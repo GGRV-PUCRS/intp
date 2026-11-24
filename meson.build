@@ -1,7 +1,7 @@
 project(
         'intp',
         'c',
-        version: '0.10.0-beta1',
+        version: '0.10.0-beta2',
         license: 'MIT',
         meson_version: '>= 0.61.0',
         default_options: [

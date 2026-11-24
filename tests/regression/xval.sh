@@ -11,16 +11,20 @@
 # (netp nets blk mbw llcmr llcocc cpu) within a per-column tolerance.
 #
 # Modes:
-#   --self <bin>    run <bin> twice side-by-side: default (eBPF-preferred)
-#                   backend selection vs all-eBPF-disabled
-#                   (--disable-backend ebpf_bytes/ebpf_softirq/ebpf_svctm/
-#                   ebpf_sched/ebpf_perf).
+#   --self <bin>    run <bin> under its default engine (auto: eBPF where
+#                   it probes) and under --engine=stable (the v2.1
+#                   lineage only), plus --engine=ebpf (the v3.3 lineage
+#                   only) when root + BTF.
 #   --cross <bin>   --self arms PLUS the research v2.1 binary
 #                   (make -C $INTP_XVAL_ACROSS_DIR/variants/v2.1-c-abi-cgroup;
 #                   intp-c-abi-cgroup --output tsv --no-header) and, when
 #                   root + BTF, the v3.3 binary (variants/
 #                   v3.3-ebpf-core-cgroup; intp-ebpf-core-cgroup
 #                   --no-diag-cols). Used by run-remote-gate.sh step 5.
+#                   Besides intp-default against each variant, the
+#                   lineage-matched pairs (intp --engine=stable vs v2.1,
+#                   intp --engine=ebpf vs v3.3) check that one intp
+#                   binary reproduces each research variant (ADR-0013).
 #
 # All arms get IDENTICAL pinned normalizer overrides (the variant CLIs
 # use the same long flag names), so detect-path divergence cannot leak
@@ -47,7 +51,7 @@
 #   INTP_XVAL_MEMBW_BPS   pinned DRAM bandwidth  (default 25600000000)
 #   INTP_XVAL_LLC_BYTES   pinned LLC size        (default 33554432)
 #   INTP_XVAL_DISK_BPS    pinned disk bandwidth  (default 500000000;
-#                         intp-only flag, affects cgroup blk only)
+#                         intp and v2.1; affects cgroup io.stat blk only)
 #
 # Exit codes: 0 parity holds, 1 divergent, 77 SKIP (missing prerequisite).
 
@@ -78,7 +82,6 @@ LLC_BYTES="${INTP_XVAL_LLC_BYTES:-33554432}"
 DISK_BPS="${INTP_XVAL_DISK_BPS:-500000000}"
 
 METRICS=(netp nets blk mbw llcmr llcocc cpu)
-EBPF_BACKENDS=(ebpf_bytes ebpf_softirq ebpf_svctm ebpf_sched ebpf_perf)
 
 log()  { echo "[xval] $*" >&2; }
 warn() { echo "[xval] WARNING: $*" >&2; }
@@ -91,6 +94,7 @@ command -v stress-ng >/dev/null 2>&1 || skip "stress-ng not installed (apt insta
 OUTDIR=$(mktemp -d /tmp/intp-xval-XXXXXX)
 WORKLOAD_PID=""
 
+# shellcheck disable=SC2329  # invoked through `trap cleanup` below
 cleanup() {
     # Arms run in the foreground, so an interrupted arm dies with the
     # script's process group; only the shared workload needs reaping.
@@ -108,6 +112,11 @@ ARMS=(intp-default intp-noebpf)
 V21_BIN=""
 V33_BIN=""
 
+# --engine=ebpf needs the eBPF programs to load (root + BTF).
+if [ "$(id -u)" -eq 0 ] && [ -f /sys/kernel/btf/vmlinux ]; then
+    ARMS+=(intp-ebpf)
+fi
+
 if [ "$MODE" = cross ]; then
     [ -n "$ACROSS" ] || skip "INTP_XVAL_ACROSS_DIR not set (across-intp checkout required for --cross)"
     [ -d "$ACROSS" ] || skip "across-intp checkout missing: $ACROSS"
@@ -121,8 +130,12 @@ if [ "$MODE" = cross ]; then
     fi
     [ -n "$V21_BIN" ] && ARMS+=(v2.1)
 
-    # v3.3 needs root + BTF to load its CO-RE programs.
-    if [ "$(id -u)" -eq 0 ] && [ -f /sys/kernel/btf/vmlinux ]; then
+    # v3.3 needs root + BTF to load its CO-RE programs, and a cgroup
+    # target: it is the per-cgroup variant (its system-wide counterpart is
+    # v3.2) and reads every cgroup-scoped column as 0 without --cgroup.
+    if [ -z "$CGROUP" ]; then
+        warn "no INTP_XVAL_CGROUP -- skipping the v3.3 piece (v3.3 reads 0 system-wide)"
+    elif [ "$(id -u)" -eq 0 ] && [ -f /sys/kernel/btf/vmlinux ]; then
         log "building v3.3 (make -C $ACROSS/variants/v3.3-ebpf-core-cgroup)"
         if make -C "$ACROSS/variants/v3.3-ebpf-core-cgroup" >"$OUTDIR/v3.3-build.log" 2>&1; then
             V33_BIN="$ACROSS/variants/v3.3-ebpf-core-cgroup/intp-ebpf-core-cgroup"
@@ -149,15 +162,13 @@ run_arm() {
     local name="$1" outfile="$2"
     local args=()
     case "$name" in
-    intp-default|intp-noebpf)
+    intp-default|intp-noebpf|intp-ebpf)
         args=(-f tsv-legacy-v1 -i 1s -d "${DUR}s"
               --nic-speed-bps "$NIC_BPS" --mem-bw-max-bps "$MEMBW_BPS"
               --llc-size-bytes "$LLC_BYTES" --disk-bw-max-bps "$DISK_BPS")
         [ -n "$CGROUP" ] && args+=(-c "$CGROUP")
-        if [ "$name" = intp-noebpf ]; then
-            local b
-            for b in "${EBPF_BACKENDS[@]}"; do args+=(--disable-backend "$b"); done
-        fi
+        [ "$name" = intp-noebpf ] && args+=(--engine stable)
+        [ "$name" = intp-ebpf ] && args+=(--engine ebpf)
         timeout "$((DUR + 10))" "$BIN" "${args[@]}" \
             > "$outfile" 2>"${outfile}.err" || true
         ;;
@@ -170,6 +181,9 @@ run_arm() {
         args=(--output tsv --no-header --interval 1 --duration "$DUR"
               --nic-speed-bps "$NIC_BPS" --mem-bw-max-bps "$MEMBW_BPS"
               --llc-size-bytes "$LLC_BYTES")
+        # v2.1's cgroup blk is io.stat throughput over a disk ceiling, as
+        # intp's stable chain is; v3.3's svctm blk takes no ceiling.
+        [ "$name" = v2.1 ] && args+=(--disk-bw-max-bps "$DISK_BPS")
         [ "$name" = v3.3 ] && args+=(--no-diag-cols)
         [ -n "$CGROUP" ] && args+=(--cgroup "$CGROUP")
         timeout "$((DUR + 10))" "$vbin" "${args[@]}" \
@@ -340,7 +354,7 @@ done
     echo "| nic-speed-bps | $NIC_BPS (pinned, all arms) |"
     echo "| mem-bw-max-bps | $MEMBW_BPS (pinned, all arms) |"
     echo "| llc-size-bytes | $LLC_BYTES (pinned, all arms) |"
-    echo "| disk-bw-max-bps | $DISK_BPS (pinned, intp arms) |"
+    echo "| disk-bw-max-bps | $DISK_BPS (pinned, intp and v2.1 arms) |"
     echo "| captures | $OUTDIR |"
     echo ""
     echo "## Per-arm capture"
@@ -353,17 +367,27 @@ done
     echo ""
 } > "$MD"
 
-# Pair set: the self pair, then intp-default vs each research variant.
+# Pair set: the self pairs, intp-default vs each research variant, then
+# the lineage-matched pairs (one intp binary standing in for each variant).
 declare -a PAIRS=()
 have_arm() { local a; for a in "${LIVE_ARMS[@]:-}"; do [ "$a" = "$1" ] && return 0; done; return 1; }
 if have_arm intp-default && have_arm intp-noebpf; then
     PAIRS+=("intp-default intp-noebpf")
+fi
+if have_arm intp-default && have_arm intp-ebpf; then
+    PAIRS+=("intp-default intp-ebpf")
 fi
 for v in v2.1 v3.3; do
     if have_arm intp-default && have_arm "$v"; then
         PAIRS+=("intp-default $v")
     fi
 done
+if have_arm intp-noebpf && have_arm v2.1; then
+    PAIRS+=("intp-noebpf v2.1")
+fi
+if have_arm intp-ebpf && have_arm v3.3; then
+    PAIRS+=("intp-ebpf v3.3")
+fi
 
 if [ "${#PAIRS[@]}" -eq 0 ]; then
     warn "no comparable arm pair survived capture"
