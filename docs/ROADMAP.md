@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/intp.png" alt="intP — Linux interference profiler" width="280">
+  <img src="images/intp-en.svg" alt="intP — Linux interference profiler" width="280">
 </p>
 
 # Roadmap — From placeholder to official Linux package
