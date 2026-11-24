@@ -11,6 +11,16 @@ in any minor release and will be flagged in the relevant section below.
 
 ## [Unreleased]
 
+## [0.10.0-beta2] — 2026-11-24
+
+Second beta of 0.10.0: the backend engines and portable eBPF backends of
+the across-intp `v0.2.1` sync (ADR-0013) and the opt-in cgroup cpu
+normalization of across-intp `v0.2.2` (C40; ADR-0014), for Ubuntu 22.04,
+24.04 and 26.04 on amd64 and arm64. **Not validated on the RDT
+testbed**: like 0.10.0-beta1 it skips the release gate
+(`tests/regression/run-remote-gate.sh`) and is published to
+`ppa:norohim/intp-staging` only.
+
 ### Added
 
 - **`--engine auto|stable|ebpf`.** Restricts every backend chain to one
@@ -35,14 +45,8 @@ in any minor release and will be flagged in the relevant section below.
   so a pinned container and a guest of the same size report on the
   same scale. The default stays `online`. `--print-schema` reports
   the basis (`normalization`, `normalization_cpus`) under the cpu
-  metric. Same algorithm as across-intp v2.1/v3.3 `--cpu-norm`.
-
-### Changed
-
-- Synced with across-intp `v0.2.1` (`a214643cb1be`, ADR-0013).
-- Under the default engine, the eBPF `cpu`, `llcmr` and `netp` backends
-  step aside for per-PID targets, and the eBPF `cpu` backend inside a
-  KVM guest, with the reason shown in `--print-schema`.
+  metric. Same algorithm as across-intp v2.1/v3.3 `--cpu-norm`
+  (v0.2.2, C40; ADR-0014).
 
 ### Fixed
 
@@ -78,6 +82,11 @@ in any minor release and will be flagged in the relevant section below.
 
 ### Changed
 
+- Synced with across-intp `v0.2.2` (ADR-0014), after `v0.2.1`
+  (`a214643cb1be`, ADR-0013).
+- Under the default engine, the eBPF `cpu`, `llcmr` and `netp` backends
+  step aside for per-PID targets, and the eBPF `cpu` backend inside a
+  KVM guest, with the reason shown in `--print-schema`.
 - Contributions no longer require a DCO sign-off (`git commit -s`):
   no commit had one and nothing checked it. Opening a pull request
   accepts the MIT license, as `CONTRIBUTING.md` now says.
@@ -325,7 +334,7 @@ failed to build on Launchpad and its version is burned.
 
 `0.1.0-placeholder2` and `0.2.0-placeholder` were PPA placeholders
 without metrics. `0.9.0-rc1` and `0.9.0` passed the RDT-testbed gate
-but were never published. `0.10.0-beta1` is a staging-only beta that
-skips the gate; `0.10.0` is the first release on the main PPA.
+but were never published. `0.10.0-beta1` and `0.10.0-beta2` are
+staging-only betas that skip the gate; `0.10.0` is the first release on the main PPA.
 `1.0.0` is reserved for the plugin ABI freeze, per
 [docs/ROADMAP.md](docs/ROADMAP.md).

@@ -3,18 +3,21 @@
 `intp` is the production line. [**across-intp**](https://github.com/GGRV-PUCRS/across-intp)
 (formerly intp-comparison) is the public research repository where the
 measured variants, the benchmark campaigns and the papers live: its
-`v0.1.0` release is the SBAC-PAD 2026 artifact and its `v0.2.0` release
-the JSA artifact. Decision codes in comments here refer to across-intp's
+`v0.1.0` release is the SBAC-PAD 2026 artifact, and the JSA article cites
+its `v0.2.2` release for the code and the `v0.2.1` record for the data. Decision codes in comments here refer to across-intp's
 logs unless another log is named: `D` entries to `DECISIONS.md`, `C`
 entries to `docs/DECISIONS-container.md`, `S` entries to
 `bench/iada/DECISIONS-sim-experiments.md`.
 
 ## The contract: pinned re-sync
 
-- **Current pin:** across-intp **`a214643cb1be`**, tag `v0.2.1`
-  (2026-09-30), recorded in [ADR-0013](docs/design/0013-engines-and-resync-v0.2.1.md).
-  The previous pin, `24f26e5a5df1` (tag `v0.2.0`), is recorded in
-  [ADR-0012](docs/design/0012-resync-across-intp.md) and across-intp D15.
+- **Current pin:** across-intp tag **`v0.2.2`**, recorded in
+  [ADR-0014](docs/design/0014-resync-v0.2.2-cpu-norm.md). The audit read
+  `release/v0.2.2` at `5d90acc`; the tag's commit goes here once it is cut.
+  Earlier pins: `a214643cb1be` (tag `v0.2.1`,
+  [ADR-0013](docs/design/0013-engines-and-resync-v0.2.1.md)) and
+  `24f26e5a5df1` (tag `v0.2.0`,
+  [ADR-0012](docs/design/0012-resync-across-intp.md), across-intp D15).
 - **History:** the first port was a one-way freeze at **`2e87b30fc762`**
   (branch `feat/container-based-interference`, 2026-06-10, across-intp
   D10). Every ported file carries a provenance header naming its origin
@@ -44,11 +47,16 @@ Recorded in ADR-0013: intp runs both lineages in one binary
 backend inside a KVM guest. `--engine=stable` and `--engine=ebpf`
 reproduce v2.1 and v3.3 without those rules.
 
+Recorded in ADR-0014: the `--cpu-norm` basis is reported by
+`--print-schema` instead of a `# cpu normalization:` line in the TSV,
+which keeps its legacy header.
+
 ## Provenance map
 
 Origins are paths in across-intp. Each was first ported at
-`2e87b30fc762`, audited at `24f26e5a5df1` (ADR-0012) and again at the
-pin `a214643cb1be` (ADR-0013), where the v0.2.1 changes were ported.
+`2e87b30fc762`, audited at `24f26e5a5df1` (ADR-0012), at `a214643cb1be`
+(ADR-0013), where the v0.2.1 changes were ported, and at v0.2.2
+(ADR-0014), where the cgroup cpu normalization was ported.
 
 | intp | across-intp origin |
 |---|---|
@@ -65,6 +73,7 @@ pin `a214643cb1be` (ADR-0013), where the v0.2.1 changes were ported.
 | `src/backends/llcmr/llcmr_perf.c` | `variants/v2.1-c-abi-cgroup/src/llcmr.c` |
 | `src/backends/llcocc/llcocc_stable.c` | `variants/v2.1-c-abi-cgroup/src/llcocc.c` (+ hygiene in init) |
 | `src/backends/cpu/cpu_procfs.c` | `variants/v2.1-c-abi-cgroup/src/cpu.c` |
+| `src/backends/ebpf/cpu_ebpf.c` (cpu basis) | `variants/v3.3-ebpf-core-cgroup/src/{intp_agg.c,cgroup_cap.c}` (`compute_sample`, `--cpu-norm`) |
 | `src/backends/ebpf/intp_agg.bpf.{c,h}` (byte-frozen) | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.bpf.{c,h}` |
 | `src/backends/ebpf/ebpf_loader.c` + shims | `variants/v3.3-ebpf-core-cgroup/src/intp_agg.c` (split: skeleton lifecycle / map polling / compute_sample slices) |
 | `src/output/tsv_legacy.c` (rendering) | `variants/v2.1-c-abi-cgroup/intp-hybrid.c` (`emit_tsv`/`format_value`) |
