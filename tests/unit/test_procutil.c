@@ -31,6 +31,68 @@ static void write_procs(const char *dir, const char *body)
 	}
 }
 
+static void write_cg_file(const char *dir, const char *name, const char *body)
+{
+	char p[512];
+
+	snprintf(p, sizeof(p), "%s/%s", dir, name);
+
+	FILE *f = fopen(p, "w");
+
+	if (f) {
+		fputs(body, f);
+		fclose(f);
+	}
+}
+
+static int near(double a, double b)
+{
+	double d = a - b;
+
+	return d < 1e-9 && d > -1e-9;
+}
+
+/* --cpu-norm=cgroup divisor: cpuset.cpus.effective count, capped by the
+ * tightest cpu.max quota on the path or an ancestor. */
+static void test_cpu_capacity(void)
+{
+	INTP_EXPECT_EQ(procutil_count_cpulist("0-15\n"), 16);
+	INTP_EXPECT_EQ(procutil_count_cpulist("0-3,8,10-11"), 7);
+	INTP_EXPECT_EQ(procutil_count_cpulist("5"), 1);
+	INTP_EXPECT_EQ(procutil_count_cpulist("3-1"), -1);
+	INTP_EXPECT_EQ(procutil_count_cpulist("a-b"), -1);
+
+	char top[] = "/tmp/intp-cputest-XXXXXX";
+
+	if (!mkdtemp(top)) {
+		INTP_EXPECT(0 && "mkdtemp failed");
+		return;
+	}
+
+	char child[96], leaf[128];
+
+	snprintf(child, sizeof(child), "%s/child", top);
+	snprintf(leaf, sizeof(leaf), "%s/leaf", child);
+	INTP_EXPECT(mkdir(child, 0755) == 0);
+	INTP_EXPECT(mkdir(leaf, 0755) == 0);
+
+	write_cg_file(top, "cpuset.cpus.effective", "0-15\n");
+	write_cg_file(top, "cpu.max", "max 100000\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(top), 16.0));
+
+	write_cg_file(child, "cpuset.cpus.effective", "0-3,8,10-11\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(child), 7.0));
+
+	write_cg_file(leaf, "cpuset.cpus.effective", "0-3,8,10-11\n");
+	write_cg_file(leaf, "cpu.max", "150000 100000\n");
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(leaf), 1.5));
+
+	write_cg_file(child, "cpu.max", "100000 100000\n"); /* tighter */
+	INTP_EXPECT(near(procutil_cgroup_cpu_capacity(leaf), 1.0));
+
+	INTP_EXPECT(procutil_cgroup_cpu_capacity(NULL) <= 0.0);
+}
+
 /* Build a fake nested cgroup tree (top has NO direct procs, the payload
  * lives in child + grandchild cgroups — the incus/lxc layout) and check
  * that the recursive reader captures the descendants the non-recursive
@@ -200,6 +262,7 @@ int main(void)
 	test_cgroup_procs_recursion();
 	test_cgroup_threads_recursion();
 	test_proc_tasks();
+	test_cpu_capacity();
 
 	return INTP_TEST_END();
 }

@@ -19,12 +19,15 @@
 
 #include "../../core/core.h"
 #include "../../core/detect.h"
+#include "../common/procutil.h"
 #include "ebpf_loader.h"
 
 static struct {
 	int valid;
 	int cgroup_mode;
 	int num_cores;
+	double basis; /* cpus in the divisor: num_cores, or the cgroup
+		       * capacity under --cpu-norm=cgroup */
 } cs;
 
 static struct intp_core_backend cpu_ebpf_backend;
@@ -66,6 +69,16 @@ static int cpu_ebpf_init(void)
 	}
 	cs.cgroup_mode = intp_ebpf_have_cgroup();
 	cs.num_cores = detect_cached()->num_cores;
+	cs.basis = (double)(cs.num_cores > 0 ? cs.num_cores : 1);
+
+	const struct intp_core_target *t = intp_core_target_get();
+
+	if (cs.cgroup_mode && t && t->cgroup_path && t->cpu_norm_cgroup) {
+		double cap = procutil_cgroup_cpu_capacity(t->cgroup_path);
+
+		if (cap > 0.0)
+			cs.basis = cap;
+	}
 	cs.valid = 1;
 	return 0;
 }
@@ -82,8 +95,7 @@ static int cpu_ebpf_read(struct intp_core_sample *out, double interval_sec)
 
 	const struct intp_counters *d = cs.cgroup_mode ? &d_cg : &d_g;
 	double interval_ns = interval_sec * 1e9;
-	double cpu_ns_available =
-		interval_ns * (cs.num_cores > 0 ? cs.num_cores : 1);
+	double cpu_ns_available = interval_ns * cs.basis;
 
 	out->value =
 		intp_ebpf_safe_pct((double)d->cpu_on_ns_sum, cpu_ns_available);

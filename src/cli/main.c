@@ -55,6 +55,11 @@ static const char usage_text[] =
 	"      --tap-iface NAME       host tap/vnet iface for VM netp\n"
 	"      --exact                leaf-only cgroup matching (skip the "
 	"subtree)\n"
+	"      --cpu-norm MODE        cpu divisor: online (default, all "
+	"online CPUs)\n"
+	"                             or cgroup (CPUs the cgroup may use: "
+	"cpuset\n"
+	"                             capped by cpu.max)\n"
 	"      (default: profile the whole system)\n"
 	"\n"
 	"Experimental (require --experimental; ADR-0008):\n"
@@ -222,6 +227,7 @@ enum {
 	OPT_EXPERIMENTAL,
 	OPT_PORTABLE,
 	OPT_ENGINE,
+	OPT_CPU_NORM,
 };
 
 static const struct option long_opts[] = {
@@ -258,6 +264,7 @@ static const struct option long_opts[] = {
 	{"experimental", no_argument, NULL, OPT_EXPERIMENTAL},
 	{"portable-metrics", no_argument, NULL, OPT_PORTABLE},
 	{"engine", required_argument, NULL, OPT_ENGINE},
+	{"cpu-norm", required_argument, NULL, OPT_CPU_NORM},
 	{NULL, 0, NULL, 0},
 };
 
@@ -673,6 +680,19 @@ int main(int argc, char *argv[])
 					"intp: bad --engine: %s (expected "
 					"auto, "
 					"stable or ebpf)\n",
+					optarg);
+				return 2;
+			}
+			break;
+		case OPT_CPU_NORM:
+			if (strcmp(optarg, "cgroup") == 0) {
+				extras.cpu_norm_cgroup = 1;
+			} else if (strcmp(optarg, "online") == 0) {
+				extras.cpu_norm_cgroup = 0;
+			} else {
+				fprintf(stderr,
+					"intp: --cpu-norm: expected 'online' "
+					"or 'cgroup', got '%s'\n",
 					optarg);
 				return 2;
 			}

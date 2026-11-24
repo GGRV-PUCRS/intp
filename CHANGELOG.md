@@ -28,6 +28,14 @@ in any minor release and will be flagged in the relevant section below.
 - `--list-backends` shows each candidate's lineage and rejection
   reason, and the portable chains; `--print-schema` reports the engine
   and each portable metric's backend.
+- **`--cpu-norm online|cgroup`.** Opt-in divisor for the cpu metric
+  of a cgroup target: `cgroup` divides on-CPU time by the CPUs the
+  cgroup may use (`cpuset.cpus.effective`, capped by the tightest
+  `cpu.max` on the path or an ancestor) instead of all online CPUs,
+  so a pinned container and a guest of the same size report on the
+  same scale. The default stays `online`. `--print-schema` reports
+  the basis (`normalization`, `normalization_cpus`) under the cpu
+  metric. Same algorithm as across-intp v2.1/v3.3 `--cpu-norm`.
 
 ### Changed
 

@@ -129,3 +129,41 @@ test('cli/portable-metrics-keep-tsv-legacy-7-columns',
      suite: 'integration',
      depends: intp_exe,
 )
+
+# --cpu-norm (opt-in cgroup-capacity divisor for cpu): a bad mode is a
+# usage error (exit 2); --print-schema declares the basis in use, online
+# by default and the cgroup capacity (cpuset capped by cpu.max) when
+# asked for. Uses a fake cgroup directory, so it runs unprivileged.
+test('cli/cpu-norm-rejects-bad-mode',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        ERR=$($BIN --cpu-norm bogus 2>&1 >/dev/null)
+        RC=$?
+        [ $RC -eq 2 ] || exit 1
+        echo "$ERR" | grep -q cpu-norm || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+     depends: intp_exe,
+)
+
+test('cli/cpu-norm-schema-declares-basis',
+     find_program('sh'),
+     args: ['-c', '''
+        BIN=@0@
+        T=$(mktemp -d) || exit 1
+        trap 'rm -rf "$T"' EXIT
+        printf 'usage_usec 1000\n' > "$T/cpu.stat"
+        printf '0-3\n' > "$T/cpuset.cpus.effective"
+        printf '150000 100000\n' > "$T/cpu.max"
+        $BIN --print-schema | grep -q '"normalization": "online"' || exit 1
+        $BIN -c "$T" --print-schema | grep -q '"normalization": "online"' || exit 1
+        S=$($BIN -c "$T" --cpu-norm cgroup --print-schema) || exit 1
+        echo "$S" | grep -q '"normalization": "cgroup"' || exit 1
+        echo "$S" | grep -q '"normalization_cpus": 1.50' || exit 1
+        exit 0
+     '''.format(meson.project_build_root() / 'src/cli/intp')],
+     suite: 'integration',
+     depends: intp_exe,
+)

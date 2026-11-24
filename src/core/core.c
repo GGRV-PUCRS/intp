@@ -177,6 +177,7 @@ int intp_core_open_ex(const struct intp_options *opts,
 		if (extras->disk)
 			ctx->target.disk = extras->disk;
 		ctx->target.exact = extras->exact;
+		ctx->target.cpu_norm_cgroup = extras->cpu_norm_cgroup;
 		/* Multi-PID targets (--pids/--comm) OVERRIDE the single
 		 * -p pid from the public options. */
 		if (extras->pids && extras->n_pids > 0) {
@@ -380,6 +381,29 @@ static void print_mbw_ceiling(FILE *f, const struct intp_ctx *ctx)
 		detect_memory_bandwidth_is_fallback() ? "true" : "false");
 }
 
+/* --print-schema: the cpu normalization basis, so a consumer can tell
+ * a share of the whole machine from a share of the cgroup's own
+ * allotment. Only the cgroup-scoped backends honor --cpu-norm=cgroup. */
+static void print_cpu_norm(FILE *f, const struct intp_ctx *ctx,
+			   const struct intp_core_backend *b)
+{
+	const char *cg = ctx->target.cgroup_path;
+	int scoped = cg && b->scope && strcmp(b->scope, "cgroup") == 0;
+	double cap = (scoped && ctx->target.cpu_norm_cgroup)
+			     ? procutil_cgroup_cpu_capacity(cg)
+			     : -1.0;
+
+	if (cap > 0.0) {
+		fprintf(f, "      \"normalization\": \"cgroup\",\n");
+		fprintf(f, "      \"normalization_cpus\": %.2f,\n", cap);
+		return;
+	}
+	long n = sysconf(_SC_NPROCESSORS_ONLN);
+
+	fprintf(f, "      \"normalization\": \"online\",\n");
+	fprintf(f, "      \"normalization_cpus\": %ld,\n", n > 0 ? n : 1);
+}
+
 static const char *target_kind_str(const struct intp_ctx *ctx)
 {
 	switch (ctx->opts.target.kind) {
@@ -498,6 +522,8 @@ int intp_core_print_schema(struct intp_ctx *ctx, int fd)
 					family);
 			if (strcmp(metric, "mbw") == 0)
 				print_mbw_ceiling(f, ctx);
+			if (strcmp(metric, "cpu") == 0)
+				print_cpu_norm(f, ctx, b);
 		}
 		fprintf(f, "      \"rejected\": [");
 		for (int r = 0; r < sel->n_rejected; r++) {

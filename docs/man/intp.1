@@ -83,6 +83,17 @@ target kind.
 Leaf-only cgroup matching: attribute only events of tasks in exactly
 the targeted cgroup, not its descendants (default: the whole
 subtree).
+.TP
+.B \-\-cpu\-norm \fIMODE\fR
+Divisor of the cpu metric for a cgroup target.
+.B online
+(default) divides on-CPU time by interval \(mu online CPUs, the
+original IntP semantics.
+.B cgroup
+divides by interval \(mu the CPUs the cgroup may use: the CPU count of
+its cpuset.cpus.effective, capped by the tightest cpu.max quota on the
+path or an ancestor. The basis in use is reported by
+.BR \-\-print\-schema .
 .PP
 With none of these options, the whole system is profiled.
 .SS Sampling

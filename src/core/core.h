@@ -71,6 +71,9 @@ struct intp_core_target {
 	long mem_bw_max_bps_override;  /* 0 = use detection */
 	long llc_size_bytes_override;  /* 0 = use detection */
 	long disk_bw_max_bps_override; /* 0 = use detection */
+	int cpu_norm_cgroup; /* 1 = cpu divided by the cgroup's CPU capacity
+			      * (cpuset.cpus.effective capped by cpu.max);
+			      * 0 = by online CPUs (default, IntP semantics) */
 };
 
 void intp_core_target_set(const struct intp_core_target *t);
@@ -295,6 +298,7 @@ struct intp_core_extras {
 	int portable_metrics; /* enable the system.portable.* provider
 			       * (requires opts->experimental; ADR-0009) */
 	int engine;	      /* enum intp_core_engine (--engine); 0 = AUTO */
+	int cpu_norm_cgroup;  /* --cpu-norm=cgroup (see intp_core_target) */
 	/* Multi-PID targets (--pids/--comm): routed around the single-pid
 	 * public option. When given (n_pids > 0) these OVERRIDE the
 	 * single -p pid. */

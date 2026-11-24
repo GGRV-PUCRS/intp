@@ -91,4 +91,16 @@ int procutil_read_cgroup_threads_rec(const char *cgroup_path, pid_t *out,
  * max). Returns the count; 0 if the process is gone. */
 int procutil_read_proc_tasks(pid_t pid, pid_t *out, size_t max);
 
+/* Number of CPUs in a cpuset list such as "0-3,8,10-11"; -1 on a parse
+ * error. */
+int procutil_count_cpulist(const char *list);
+
+/* CPUs available to a cgroup v2 path: the CPU count of its
+ * cpuset.cpus.effective (online CPUs when the file is absent), capped
+ * by the tightest cpu.max quota/period on the path or any ancestor.
+ * Fractional when a quota applies (e.g. 1.5). Returns <= 0 when it
+ * cannot be determined. Same algorithm as across-intp v2.1/v3.3
+ * --cpu-norm=cgroup. */
+double procutil_cgroup_cpu_capacity(const char *cgroup_path);
+
 #endif /* INTP_PROCUTIL_H */
